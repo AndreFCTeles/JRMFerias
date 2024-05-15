@@ -1,0 +1,74 @@
+@media print {
+   body {
+      overflow: hidden !important;
+   }
+
+   img {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      max-height: none !important;
+      max-width: none !important;
+   }
+
+   .print-calendar-layout {
+      display: block;
+      margin: 0 auto 0 auto;
+      height: 99% !important;
+      width: 98% !important;
+      break-after: always;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+      overflow: hidden !important;
+      size-adjust: content-fit;
+   }
+
+   .print-calendar-layout::-webkit-scrollbar {
+      display: none !important;
+   }
+
+   .fc-header-toolbar {
+      display: none;
+   }
+
+   .fc-event {
+      font-size: 10px !important;
+      display: block;
+      max-width: 100%;
+      padding: 2px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+   }
+
+   .fc-bg-event {
+      font-size: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+   }
+
+   .fc-daygrid-day-frame {
+      overflow: hidden;
+   }
+
+   .fc-day-grid-event {
+      width: 100% !important;
+      height: auto;
+      overflow: hidden;
+   }
+
+   .fc-day {
+      width: 100% !important;
+   }
+
+   .fc {
+      max-width: 100%;
+      min-height: 100%;
+      font-size: 10px;
+   }
+}

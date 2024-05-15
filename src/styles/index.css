@@ -13,21 +13,44 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
 body {
   margin: 0;
   display: flex;
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+}
+
+html,
+body,
+#root {
+  height: 100vh !important;
+  max-height: 100% !important;
+  width: 100vw !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+main {
+  height: 100vh !important;
+  min-height: 100% !important;
+  max-height: 100% !important;
+  width: 100vw !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  top: 0 !important;
+}
+
+/* elementos */
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: #535bf2;
 }
 
 h1 {
@@ -46,23 +69,36 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: #646cff;
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+
+
+/* preferências */
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
     background-color: #ffffff;
   }
+
   a:hover {
     color: #747bff;
   }
+
   button {
     background-color: #f9f9f9;
+  }
+}
+
+@media print {
+  * {
+    overflow: hidden !important;
   }
 }

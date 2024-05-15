@@ -1,0 +1,121 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+@media print {
+  * {
+    overflow: hidden !important;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* classes */
+.worker_card {
+  border-color: #1a1a1a;
+  border-radius: 5px;
+  border-width: 2px;
+}
+
+.formModal {
+  left: "0%";
+  position: "absolute";
+}
+
+/* MANTINE */
+.mantine-Grid-root,
+.mantine-Grid-inner,
+.mantine-Grid-col {
+  height: 100%;
+}
+
+.mantine-Modal-title,
+.mantine-Modal-header,
+.mantine-Modal-close {
+  color: #FFF;
+}
+
+.mantine-Modal-title {
+  font-weight: 600;
+}
+
+.mantine-Modal-header {
+  background-color: #269AFF;
+}
+
+.mantine-Button-root {
+  background-color: #269AFF;
+}
+
+.mantine-Drawer-close {
+  color: #FFF
+}
+
+/* FULL CALENDAR */
+.fc-header-toolbar {
+  padding: 2px 0px 0px 3px;
+}
+
+.fc-toolbar-title {
+  text-transform: capitalize;
+}
+
+.fc-multimonth-header {
+  text-transform: capitalize;
+}
+
+.fc .fc-bg-event {
+  opacity: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+  padding: 2.5%;
+}
+
+.weekend {
+  background-color: rgba(240, 240, 240, 0.5);
+  /* color: rgba(100, 108, 255, 0.5); */
+}
