@@ -18,11 +18,10 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
    //STATES
    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
    const [actionType, setActionType] = useState('');   
-   const [search, setSearch] = useState('');
+   const [search, setSearch] = useState(currentWorker?.dep || '');
+
    
-   const combobox = useCombobox({
-      onDropdownClose: () => combobox.resetSelectedOption(),
-   });
+   const combobox = useCombobox({ onDropdownClose: () => combobox.resetSelectedOption() });
    const exactOptionMatch = departments.some((item) => item === search);
    const filteredOptions = exactOptionMatch
       ? departments
@@ -117,52 +116,55 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
             {...form.getInputProps('title')}
             onChange={(event) => handleFieldChange('title', event.currentTarget.value)}
             />
+
             <Combobox
-            store={combobox}
             withinPortal={false}
+            store={combobox}
             onOptionSubmit={(val) => {
                if (val === '$create') {
-                  const newDepartment = search; // Assuming you handle adding this to your global departments list elsewhere
+                  const newDepartment = search;
                   form.setFieldValue('dep', newDepartment);
+                  setSearch(newDepartment);
                } 
                else { form.setFieldValue('dep', val); }
                combobox.closeDropdown();
-               setSearch(''); // Reset search field
+               setSearch(val);
+               //setSearch(''); // Reset search field
             }}
             >
                <Combobox.Target>
                   <InputBase
                   rightSection={<Combobox.Chevron />}
-                  value={search}
-                  mt="md"
+                  rightSectionPointerEvents="none"
                   label="Departamento"
+                  placeholder="Departamento"
                   description="Escolha da lista ou crie um novo departamento"
+                  mt="md"
                   required
+                  value={search}
+                  onClick={() => combobox.openDropdown()}
+                  onFocus={() => combobox.openDropdown()}
                   onChange={(event) => {
                      combobox.openDropdown();
                      combobox.updateSelectedOptionIndex();
                      setSearch(event.currentTarget.value);
                   }}
-                  onClick={() => combobox.openDropdown()}
-                  onFocus={() => combobox.openDropdown()}
                   onBlur={() => {
                      combobox.closeDropdown();
                      if (!exactOptionMatch) setSearch(form.values.dep || '');
                   }}
-                  placeholder="Departamento"
-                  rightSectionPointerEvents="none"
                   />
                </Combobox.Target>
-
                <Combobox.Dropdown>
                   <Combobox.Options>
                      {options}
                      {!exactOptionMatch && search.trim().length > 0 && (
-                     <Combobox.Option value="$create">+ Criar "{search}"</Combobox.Option>
+                        <Combobox.Option value="$create">+ Criar "{search}"</Combobox.Option>
                      )}
                   </Combobox.Options>
                </Combobox.Dropdown>
             </Combobox>
+
             <NumberInput
             label="Dias disponíveis:"
             suffix=" dias"
@@ -175,11 +177,13 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
             stepHoldInterval={(t) => Math.max(1000 / t ** 2, 25)}
             {...form.getInputProps('avaDays')}
             />
+
             <ColorInput
                label="Cor associada:"
                mt="md"
                {...form.getInputProps('color')}
             />
+            
             <Group mt="md" justify='space-between'>
                <Button 
                onClick={() => handleActionClick('submit')}>{currentWorker ? 'Guardar Alterações' : 'Adicionar Colaborador'}</Button>

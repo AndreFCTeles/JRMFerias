@@ -34,7 +34,7 @@ const App: React.FC = () => {
    const [isLoggedIn, setIsLoggedIn] = useState(false);
    const [calendarRefreshTrigger, setCalendarRefreshTrigger] = useState(false);
    const [workers, setWorkers] = useState<Worker[]>([]);
-   const [events, setEvents] = useState<CalendarEvent[]>([]);
+   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
    const [departments, setDepartments] = useState<string[]>([])
    // imprimir
    const [opened, { open, close }] = useDisclosure(false);
@@ -86,7 +86,7 @@ const App: React.FC = () => {
    // Event handlers
    const handleEventEdit = (eventId: string) => {   
       if (isLoggedIn){
-         const eventToEdit  = events.find(event => event.eventId === eventId);
+         const eventToEdit  = calendarEvents.find(calendarEvent => calendarEvent.eventId === eventId);
          if (eventToEdit) {
             setCurrentEvent(eventToEdit);
             setShowNewAbsenceModal(true);
@@ -143,7 +143,7 @@ const App: React.FC = () => {
          const fetchedEvents = await fetchAbsences();
          const fetchedDepartments = Array.from(new Set(fetchedWorkers.map(worker => worker.dep).filter((dep): dep is string => dep !== undefined))).sort();
          setDepartments(fetchedDepartments);
-         setEvents(fetchedEvents);
+         setCalendarEvents(fetchedEvents);
          setWorkers(fetchedWorkers);
       } catch (error) { console.error("Erro ao buscar colaboradores", error); }
    };
@@ -180,7 +180,8 @@ const App: React.FC = () => {
                   ) : ( <Button onClick={() => setShowLoginModal(true)}>Login</Button> )}
                   <Tooltip 
                   label="Refrescar calendário, caso os dados não sejam atualizados corretamente"
-                  multiline openDelay={300}
+                  multiline 
+                  openDelay={300}
                   w={200}
                   >
                      <Button 

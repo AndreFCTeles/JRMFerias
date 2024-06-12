@@ -11,6 +11,7 @@ import 'dayjs/locale/pt';
 dayjs.locale('pt');
 
 import { CalendarEvent } from '../utils/types';
+import { DatesSetArg } from '@fullcalendar/core/index.js';
 import processDate from '../utils/processDate';
 import fetchAbsences from '../utils/absences/fetchAbsences';
 import fetchHolidays from '../utils/absences/fetchHolidays';
@@ -24,6 +25,10 @@ interface WorkerCalendarProps {
    isLoggedIn: boolean;
 }
 
+
+
+
+
 // Component
 const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEventEdit, onEventDelete, showNotification, isLoggedIn }) => {
 
@@ -36,39 +41,55 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
    const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
    const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
 
-   // EFFECTS
-   useEffect(() => {
-      const fetchEvents = async () => {
-         setError(null);
-         try {
-            const absences = await fetchAbsences();
-            const holidays = await fetchHolidays(currentYearInView);
-            setLocalEvents([...(absences || []), ...holidays]);
-         } catch (error) {
-            console.error('Error fetching events:', error);
-            setError('Ocorreu um problema ao carregar dados. Por favor tente mais tarde.');
-         }
-      };
-      setLocalEvents([]);
-      fetchEvents();
-   }, [currentYearInView, refreshTrigger]);
 
-   // HANDLERS
+
+
+
+   // EFFECTS
+   const fetchEvents = useCallback(async () => {
+      setError(null);      
+      console.log(' ')
+      console.log('workercalendar')
+      try {
+         const [absences, currentYearHolidays, previousYearHolidays, nextYearHolidays] = await Promise.all([
+            fetchAbsences(),
+            fetchHolidays(currentYearInView),
+            fetchHolidays(currentYearInView - 1),
+            fetchHolidays(currentYearInView + 1)
+         ]);
+
+         const combinedEvents = [
+            ...(absences || []),
+            ...(currentYearHolidays || []),
+            ...(previousYearHolidays || []).filter((holEvent:CalendarEvent) => new Date(holEvent.start).getMonth() === 11), // Only December
+            ...(nextYearHolidays || []).filter((holEvent:CalendarEvent) => new Date(holEvent.start).getMonth() === 0) // Only January
+         ];
+         setLocalEvents(combinedEvents);
+      } catch (error) {
+         console.error('Error fetching events:', error);
+         setError('Ocorreu um problema ao carregar dados. Por favor tente mais tarde.');
+      }
+   }, [currentYearInView]);
+
+   // Use effect to fetch events on component mount and when dependencies change
+   useEffect(() => {
+      fetchEvents();
+   }, [fetchEvents, refreshTrigger]);
+
+
+
+
+
+   // CALLBACKS
    const getAdjustedEventsForDisplay = useCallback(() => {
-      const processedEvents = localEvents.map(event => ({
-         ...event,
-         end: event.end ? processDate(event.end, 1) : undefined,
-         originalEnd: event.end,
+      const processedEvents = localEvents.map(processedEvent => ({
+         ...processedEvent,
+         id: `${processedEvent.id}-${processedEvent.start}`,
+         end: processedEvent.end ? processDate(processedEvent.end, 1) : undefined,
+         originalEnd: processedEvent.end,
       }));
-      console.log("processedEvents")
-      console.log(processedEvents)
       return processedEvents;
    }, [localEvents]);
-
-   const isWeekend = (date: Date) => {
-      const day = date.getDay();
-      return day === 0 || day === 6; // Sunday = 0, Saturday = 6
-   };
 
    const contextMenuHandler = useCallback((eventId:string) => showContextMenu([ 
       isLoggedIn ? {                        
@@ -88,8 +109,8 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
          key: 'del',
          title: 'Eliminar',
          onClick: () => {
-         setSelectedEventId(eventId);
-         setIsConfirmEventDelOpen(true);
+            setSelectedEventId(eventId);
+            setIsConfirmEventDelOpen(true);
          }
       } : {
          key: 'delLoginReminder',
@@ -102,8 +123,22 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
       }       
    ]), [showNotification, isLoggedIn, setSelectedEventId, onEventEdit, setIsConfirmEventDelOpen, showContextMenu]);
 
-   const eventDCHandler = (event:string) => {
-      if (isLoggedIn) { onEventEdit(event); } 
+   const handleDatesSet = useCallback(({ start }: DatesSetArg) => {
+      const yearInView = start.getFullYear();
+      if (yearInView !== currentYearInView) {
+         console.log("Year in view changed:", yearInView);
+         setCurrentYearInView(yearInView);
+      }
+   }, [currentYearInView]);
+
+
+   
+
+
+
+   // HANDLERS
+   const eventDCHandler = (editEvent:string) => {
+      if (isLoggedIn) { onEventEdit(editEvent); } 
       else { showNotification("Ação necessária", 'Por favor clique em "Login" e introduza as suas credenciais de acesso para efetuar esta operação', "red");}
    };
    const handleConfirm = async () => {
@@ -113,6 +148,15 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
          setSelectedEventId(null);
       }
    };
+
+   const isWeekend = (date: Date) => {
+      const day = date.getDay();
+      return day === 0 || day === 6; // Sunday = 0, Saturday = 6
+   };
+
+
+
+
 
    // JSX
    return (
@@ -129,7 +173,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
                contentHeight={"100%"}
                headerToolbar={{ start:'prev next', center: 'title', end: '' }}
                titleFormat={{ month: 'long', year: 'numeric' }}
-               editable={true}
+               editable={isLoggedIn ? true : false}
                events={getAdjustedEventsForDisplay()}
                dayCellClassNames={(arg) => (isWeekend(arg.date) ? "weekend" : "")}
                eventContent={({ event }) => {
@@ -152,10 +196,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
                      </Tooltip>
                   );
                }}
-               datesSet={({ start }) => {
-                  const yearInView = start.getFullYear();
-                  if (yearInView !== currentYearInView) { setCurrentYearInView(yearInView); }
-               }}
+               datesSet={handleDatesSet}
                eventDidMount={({ event, el }) => {
                   el.oncontextmenu = (e) => { e.preventDefault() }
                   el.ondblclick = () => eventDCHandler(event.extendedProps.eventId);

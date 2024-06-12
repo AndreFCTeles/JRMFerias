@@ -10,7 +10,10 @@ const fetchAbsences = async () => {
          eventId: vacation.id,
          start: vacation.start,
          end: vacation.end,
-         color: worker.color,
+         borderColor: worker.color,
+         backgroundColor: worker.color, 
+         textColor: 'auto',
+         display: 'auto'
       })));
       const offDayEvents = workers.flatMap((worker: Worker) => worker.offDays.map(offDay => ({
          id: worker.id,
@@ -18,9 +21,14 @@ const fetchAbsences = async () => {
          eventId: offDay.id,
          start: offDay.start,
          end: offDay.end || offDay.start,
-         color: worker.color,
+         borderColor: worker.color,
+         backgroundColor: worker.color, 
+         textColor: 'auto',
+         display: 'auto'
       })));
       const absence = [...vacationEvents, ...offDayEvents];
+      console.log("fetchAbsences:")
+      console.log(absence);
       return absence;
    } catch (error) {
       console.error("Error fetching worker events:", error);

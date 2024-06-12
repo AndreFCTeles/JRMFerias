@@ -97,8 +97,9 @@ button:focus-visible {
   }
 }
 
+/*
 @media print {
   * {
     overflow: hidden !important;
   }
-}
+}*/

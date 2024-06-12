@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from "react";
-import { Card, Text, Badge, Title , Group, ScrollArea, Tooltip, Modal, Button, Accordion,Stack } from '@mantine/core';
+import { Card, Text, Badge, Title , Group, ScrollArea, Tooltip, Modal, Button, Accordion, Stack, Grid } from '@mantine/core';
 import { useContextMenu} from 'mantine-contextmenu';
 import { Worker } from "../utils/types";
 
@@ -97,9 +97,13 @@ const WorkerList: React.FC<WorkerListProps> = ({ workers, onWorkerEdit, onWorker
                            <Text fw={650}>Colaborador:</Text>
                            <Text fw={650}>Dias disponíveis:</Text>
                         </Group>
-                        <Group justify="space-between">
-                           <Text fw={400} size="lg">{worker.title}</Text>
-                           <Badge color={worker.color}>{worker.avaDays}</Badge>
+                        <Group w="100%">
+                           <Grid w="100%" justify="space-between" align="stretch" grow>
+                              <Grid.Col span={6}><Text fw={400} size="md" ta="left" style={{lineHeight:"1.2"}}>{worker.title}</Text></Grid.Col>
+                              <Grid.Col span={6}><Badge color={worker.color}>{worker.avaDays}</Badge></Grid.Col>
+                           </Grid>
+                           
+                           
                         </Group>
                      </Stack>
                   </Card>  

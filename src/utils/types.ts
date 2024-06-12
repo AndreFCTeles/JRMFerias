@@ -31,16 +31,33 @@ export interface CalendarEvent {
    eventId: string;
    start: string;
    end: string;
-   color: string;
+   borderColor?: string;
+   backgroundColor?: string;
+   textColor?: string;
+   allDay?: boolean;
+   display?: string;
 }
 
 export interface HolidayAPIEvent {
    id: string;
-   title: string;
-   name?: EventText[];
    startDate: string;
    endDate: string;
-   color?: string;
+   type?: string;
+   quality?: string;
+   name?: EventText[];
+   nationwide?: boolean;
+   title?: string;
+}
+export interface ProcessedHolidayEvent {
+   id: string;
+   title: string;
+   eventId: string;
+   start: string;
+   end: string;
+   borderColor?: string;
+   backgroundColor?: string;
+   textColor?: string;
+   display: string;
 }
 
 export interface NewAbsenceRequest {

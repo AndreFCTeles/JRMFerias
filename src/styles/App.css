@@ -36,11 +36,13 @@
   }
 }
 
+/*
 @media print {
   * {
     overflow: hidden !important;
   }
 }
+  */
 
 .card {
   padding: 2em;
@@ -118,4 +120,15 @@
 .weekend {
   background-color: rgba(240, 240, 240, 0.5);
   /* color: rgba(100, 108, 255, 0.5); */
+}
+
+.fc-day {
+  line-height: 1em;
+  font-size: 0.95em;
+  text-overflow: ellipsis;
+}
+
+.fc-event-main {
+  padding-top: 1px;
+  padding-bottom: 3px;
 }
