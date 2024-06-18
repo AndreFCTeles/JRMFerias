@@ -15,7 +15,6 @@ const WorkerList: React.FC<WorkerListProps> = ({ workers, onWorkerEdit, onWorker
    const {showContextMenu} = useContextMenu();
    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
    const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
-
    const [departmentGroups, setDepartmentGroups] = useState<Map<string, Worker[]>>(new Map());
 
    useEffect(() => {

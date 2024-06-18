@@ -1,6 +1,6 @@
 // Frameworks
-import React, { useState, useEffect }   from 'react';
-import { AppShell, Button, Modal, Flex, Drawer, Notification, Tooltip } from '@mantine/core'
+import React, { useState, useEffect, useCallback }   from 'react';
+import { AppShell, Button, Modal, Flex, Drawer, Notification, Tooltip, SegmentedControl, Box, Text } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks';
 
 // Interfaces
@@ -36,6 +36,7 @@ const App: React.FC = () => {
    const [workers, setWorkers] = useState<Worker[]>([]);
    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
    const [departments, setDepartments] = useState<string[]>([])
+   const [view, setView] = useState<'dayGridMonth' | 'multiMonthYear'>('dayGridMonth');
    // imprimir
    const [opened, { open, close }] = useDisclosure(false);
    const [isPrintMode, setIsPrintMode] = useState(false);
@@ -104,6 +105,8 @@ const App: React.FC = () => {
          showNotification("Error", "Erro ao eliminar ausência", "red");
       }
    };
+   // View handlers
+   const handleViewChange = useCallback((newView: 'dayGridMonth' | 'multiMonthYear') => { setView(newView); }, []);
 
    // Sistema de notificações
    const showNotification = (title: string, message: string, color: string) => {
@@ -163,35 +166,51 @@ const App: React.FC = () => {
                <Flex
                ml={"25px"}
                h={"100%"}
-               w={"100%"}
                mih={50}
                gap="sm"
-               justify="flex-start"
+               justify="space-between"
                align="center"
                direction="row"
                wrap="wrap"
                >
-                  <Button onClick={open}>Imprimir</Button>
-                  {isLoggedIn ? ( 
-                     <>
-                        <Button onClick={handleNewWorkerOpen}>Novo Colaborador</Button>
-                        <Button onClick={handleAbsenceOpen}>Adicionar Ausência</Button>  
-                     </>
-                  ) : ( <Button onClick={() => setShowLoginModal(true)}>Login</Button> )}
-                  <Tooltip 
-                  label="Refrescar calendário, caso os dados não sejam atualizados corretamente"
-                  multiline 
-                  openDelay={300}
-                  w={200}
-                  >
-                     <Button 
-                     variant="light" 
-                     ml={"50px"} 
-                     style={{backgroundColor: "#FFF"}}
-                     onClick={triggerCalendarRefresh}
-                     >Refrescar Calendário</Button>
-                  </Tooltip>
+                  <Box>
+                     <Button onClick={open}>Imprimir</Button>
+                     {isLoggedIn ? ( 
+                        <>
+                           <Button ml="xs" onClick={handleNewWorkerOpen}>Novo Colaborador</Button>
+                           <Button ml="xs" onClick={handleAbsenceOpen}>Adicionar Ausência</Button>  
+                        </>
+                     ) : ( <Button ml="xs" onClick={() => setShowLoginModal(true)}>Login</Button> )}
+                     <Tooltip 
+                     label="Refrescar calendário, caso os dados não sejam atualizados corretamente"
+                     multiline 
+                     openDelay={300}
+                     w={200}
+                     >
+                        <Button 
+                        variant="light" 
+                        ml={"50px"} 
+                        style={{backgroundColor: "#FFF"}}
+                        onClick={triggerCalendarRefresh}
+                        >Refrescar Calendário</Button>
+                     </Tooltip>
+                  </Box>
+                  <Flex mr={"lg"} align="center">
+                     <Text mr="md">Vista</Text>
+                     <SegmentedControl
+                     color='blue'
+                     radius="xl" 
+                     value={view}
+                     onChange={(value) => handleViewChange(value as 'dayGridMonth' | 'multiMonthYear')}
+                     data={[
+                        { label: 'Mensal', value: 'dayGridMonth' },
+                        { label: 'Anual', value: 'multiMonthYear' }
+                     ]}
+                     />
+                  </Flex>
+                  
                </Flex>
+
             </AppShell.Header>
 
             <AppShell.Navbar >
@@ -273,6 +292,7 @@ const App: React.FC = () => {
                onEventDelete={handleEventDelete}
                showNotification={showNotification}
                isLoggedIn={isLoggedIn}
+               view={view}
                />
             </AppShell.Main>
                
