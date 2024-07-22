@@ -6,21 +6,19 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import multiMonthPlugin from '@fullcalendar/multimonth';
 import interactionPlugin from '@fullcalendar/interaction';
+import { DatesSetArg } from '@fullcalendar/core/index.js';
 import ptLocale from '@fullcalendar/core/locales/pt';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt';
 dayjs.locale('pt');
 
 import { CalendarEvent } from '../utils/types';
-import { DatesSetArg } from '@fullcalendar/core/index.js';
-import processDate from '../utils/processDate';
-import fetchAbsences from '../utils/absences/fetchAbsences';
+import { processDate } from '../utils/generalUtils';
 import fetchHolidays from '../utils/absences/fetchHolidays';
-import updateAbsence from '../utils/absences/updateAbsence';
 
 interface WorkerCalendarProps {
-   refreshTrigger: boolean;
-   onEventEdit: (eventId: string) => void;
+   workerEvents: CalendarEvent[];
+   onEventEdit: (eventId: string, start?: string, end?: string) => void;
    onEventDelete: (eventID: string) => void;
    showNotification: (title: string, message: string, color: string) => void;
    isLoggedIn: boolean;
@@ -32,7 +30,7 @@ interface WorkerCalendarProps {
 
 
 // Component
-const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEventEdit, onEventDelete, showNotification, isLoggedIn, view }) => {
+const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ workerEvents, onEventEdit, onEventDelete, showNotification, isLoggedIn, view }) => {
 
    // STATES
    // functionality
@@ -55,15 +53,10 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
    // DATA FETCHING   
    const fetchEvents = useCallback(async (year: number) => {
       setError(null);
-      console.log('Fetching events for current year:', year);
       try {
-         const [absences, currentYearHolidays] = await Promise.all([
-            fetchAbsences(),
-            fetchHolidays(year)
-         ]);
-
+         const currentYearHolidays = await fetchHolidays(year);
          const combinedEvents = [
-            ...(absences || []),
+            ...(workerEvents || []),
             ...(currentYearHolidays || [])
          ];
          setLocalEvents(combinedEvents);
@@ -71,7 +64,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
          console.error('Error fetching events:', error);
          setError('Ocorreu um problema ao carregar dados. Por favor tente mais tarde.');
       }
-   }, []);
+   }, [workerEvents]);
 
    const getAdjustedEventsForDisplay = useCallback(() => {
       return localEvents.map(processedEvent => ({
@@ -81,6 +74,8 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
          originalEnd: processedEvent.end,
       }));
    }, [localEvents]);
+
+   
 
 
 
@@ -94,7 +89,11 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
          onClick: () => {
             if (isLoggedIn) { onEventEdit(eventId); } 
             else {
-               showNotification("Requer Login", 'Por favor clique em "Login" e introduza as suas credenciais de acesso para efetuar esta operação', "red");
+               showNotification(
+                  "Requer Login", 
+                  'Por favor clique em "Login" e introduza as suas credenciais de acesso para efetuar esta operação', 
+                  "red"
+               );
             }
          }
       },
@@ -106,7 +105,11 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
                setSelectedEventId(eventId);
                setIsConfirmEventDelOpen(true);
             } else {
-               showNotification("Requer Login", 'Por favor clique em "Login" e introduza as suas credenciais de acesso para efetuar esta operação', "red");
+               showNotification(
+                  "Requer Login", 
+                  'Por favor clique em "Login" e introduza as suas credenciais de acesso para efetuar esta operação', 
+                  "red"
+               );
             }
          }
       }
@@ -115,23 +118,22 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
    const handleDatesSet = useCallback(({ start }: DatesSetArg) => {
       if (calendarRef.current) {
          const calendarApi = calendarRef.current.getApi();
-         const currentView = calendarApi.view.type;
-         
-         // Update year in view always
+         const currentView = calendarApi.view.type;                  
          setCurrentYearInView(start.getFullYear());
-
-         // Update last month in view only if the current view is 'dayGridMonth'
-         if (currentView === 'dayGridMonth') {
-            setLastMonthInView(start.getMonth());
+         if (currentView === 'dayGridMonth') { 
+            setLastMonthInView(start.getMonth()); 
          }
       }
    }, []);
 
    const eventDCHandler = useCallback((editEvent: string) => {
-      if (isLoggedIn) { 
-         onEventEdit(editEvent); 
-      } else {
-         showNotification("Ação necessária", 'Por favor clique em "Login" e introduza as suas credenciais de acesso para efetuar esta operação', "red");
+      if (isLoggedIn) { onEventEdit(editEvent); } 
+      else {
+         showNotification(
+            "Ação necessária", 
+            'Por favor clique em "Login" e introduza as suas credenciais de acesso para efetuar esta operação', 
+            "red"
+         );
       }
    }, [isLoggedIn, onEventEdit, showNotification]);
 
@@ -150,21 +152,19 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
 
 
    // EFFECTS
-   useEffect(() => { fetchEvents(currentYearInView); }, [currentYearInView, refreshTrigger, fetchEvents]);
+   useEffect(() => {
+      fetchEvents(currentYearInView); 
+   }, [currentYearInView, fetchEvents]);
 
    useEffect(() => {
       requestAnimationFrame(() => {
-         console.log('requestAnimationFrame useEffect')
          if (calendarRef.current) {
             const calendarApi = calendarRef.current.getApi();
             calendarApi.changeView(view);
             if (view === 'dayGridMonth') {
-               console.log('requestAnimationFrame currently changing view:', currentYearInView);
                const lastMonthDate = new Date(currentYearInView, lastMonthInView, 1);
-               console.log(`requestAnimationFrame Navigating to last viewed month: `, lastMonthDate);
-               calendarApi.gotoDate(lastMonthDate); // Navigate to the last viewed month in dayGridMonth view
+               calendarApi.gotoDate(lastMonthDate);
             } else if (view === 'multiMonthYear') {
-               console.log('requestAnimationFrame currently changing view:', currentYearInView);
                calendarApi.gotoDate(new Date(currentYearInView, 0, 1)); // Navigate to January 1st of the current year in view
             }
          }
@@ -213,7 +213,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
                },
             }}
             titleFormat={{ month: 'long', year: 'numeric' }}
-            editable={isLoggedIn && view === 'dayGridMonth'}
+            editable={isLoggedIn} 
             events={getAdjustedEventsForDisplay()}
             dayCellClassNames={(arg) => (isWeekend(arg.date) ? "weekend" : "")}
             eventContent={({ event }) => {
@@ -245,29 +245,43 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({ refreshTrigger, onEvent
             datesSet={handleDatesSet}
             eventDidMount={({ event, el }) => {
                el.oncontextmenu = (e) => { e.preventDefault() }
-               el.ondblclick = () => eventDCHandler(event.extendedProps.eventId);
+               el.ondblclick = () => eventDCHandler(event.extendedProps.eventId);    
+               
+               if (event.extendedProps.type === 'off-day') {
+                  // Make off-day events non-resizable
+                  event.setProp('editable', false);
+                  event.setProp('durationEditable', false);
+               }
             }}
             eventResize={({ event }) => {
-               if(isLoggedIn){
-                  const updatedData = {
-                     start: event.start ? processDate(event.start) : '',
-                     end: event.end ? processDate(event.end) : event.start ? processDate(event.start) : '',
-                  };
-                  updateAbsence(event.extendedProps.eventId, updatedData)
-                     .then(() => { console.log("Event updated successfully"); })
-                     .catch(error => { console.error("Error updating event:", error); });
-               } else return;
+               if (event.extendedProps.type == 'vacation') {
+                  const updatedStart = event.start ? processDate(event.start) : '';                  
+                  const updatedEnd = event.end ? processDate(event.end,-1) : event.start ? processDate(event.start) : '';     
+                  onEventEdit(event.extendedProps.eventId, updatedStart, updatedEnd);
+               } else { return; }            
             }}
             eventDrop={({ event }) => {
-               if(isLoggedIn){
-                  const updatedData = {
-                     start: event.start ? processDate(event.start) : '',
-                     end: event.end ? processDate(event.end, -1) : event.start ? processDate(event.start) : ''
-                  };
-                  updateAbsence(event.extendedProps.eventId, updatedData)
-                     .then(() => { console.log("Event updated successfully"); })
-                     .catch(error => { console.error("Error updating event:", error); });
-               } else return;
+               console.log(event)
+               let updatedStart;
+               let updatedEnd;
+               const isOffDay = event.extendedProps.type === 'off-day';
+               const hasTimeComponent  = 
+                  event.start && 
+                  event.extendedProps.originalEnd &&
+                  (
+                     event.start.toString().includes('T') || 
+                     event.extendedProps.originalEnd.toString().includes('T')
+                  );
+               
+               if (isOffDay && hasTimeComponent ){
+                  const endTime = dayjs(event.extendedProps.originalEnd).format('HH:mm');
+                  updatedStart = `${dayjs(event.start).format('YYYY-MM-DDTHH:mm')}`;
+                  updatedEnd = `${dayjs(event.end).add(-1).format('YYYY-MM-DD')}T${endTime}`;
+               } else {
+                  updatedStart = event.start ? processDate(event.start) : ''
+                  updatedEnd = event.end ? processDate(event.end, -1) : event.start ? processDate(event.start) : '';
+               }
+               onEventEdit(event.extendedProps.eventId, updatedStart, updatedEnd);
             }}
             />
          </ScrollArea>

@@ -1,33 +1,56 @@
-import { NewAbsenceRequest, Absence, Worker } from "../types";
-import fetchWorkers from "../workers/fetchWorkers";
-import processDate from "../processDate";
+import { NewAbsenceRequest, Absence, JRMWorkerData } from "../types";
+import { processDate, generateAbsenceId } from "../generalUtils";
 
-const generateAbsenceId = (worker: Worker, type: 'vacation' | 'off-day'): string => {
-   const absences = type === 'vacation' ? worker.vacations : worker.offDays;
-   const newIncrement = absences.reduce((max, { id }) => {
-      const [, , increment] = id.split('-').map(Number);
-      return Math.max(max, increment);
-   }, 0) + 1;
-   return `${worker.id}-${type === 'vacation' ? '1' : '2'}-${newIncrement}`;
-};
 
-const newAbsence = async (selectedWorkerId: string, type: 'vacation' | 'off-day', startDate: Date|string, endDate: Date|string) => {
+
+interface NewAbsenceData {
+   type: 'vacation' | 'off-day';
+   start: Date | string;
+   end?: Date | string;
+   allDay?: boolean;
+   busDays?: number;
+   absTime?: number;
+   lunch?: boolean;
+}
+
+const newAbsence = async (workers: JRMWorkerData[], selectedWorkerId: string, eventData: NewAbsenceData ) => {
+   
+   console.log(" ");
+   console.log("-----------");
+   console.log("NEW ABSENCE");
+   console.log(" ");
+   
+   console.log("Received event data: ", eventData);
+   console.log("Selected worker: ", selectedWorkerId);
    try {
-      const workers = await fetchWorkers();
-      const worker = workers.find(worker => worker.id === selectedWorkerId);
+      const worker = workers.find((worker:JRMWorkerData) => worker.id === selectedWorkerId);
       if (!worker) throw new Error("Selected worker not found.");
+      if (!eventData.end) eventData.end = eventData.start;
 
-      const newAbsenceId = generateAbsenceId(worker, type);
+      const newAbsenceId = generateAbsenceId(worker, eventData.type);
       const absence: Absence = {
          id: newAbsenceId,
-         start: processDate(startDate) ,
-         end: type === 'vacation' ? processDate(endDate) : processDate(startDate),
+         start: processDate(eventData.start),
+         end: eventData.type === 'vacation' ? processDate(eventData.end) : processDate(eventData.start),
       };
 
+      if (eventData.type === 'vacation') {
+         absence.busDays = eventData.busDays;
+      } else if (eventData.type === 'off-day') {
+         absence.allDay = eventData.allDay;
+         if (eventData.allDay) { absence.busDays = 1; } 
+         else {
+            absence.absTime = eventData.absTime;
+            absence.lunch = eventData.lunch;
+         }
+         absence.start = eventData.start;
+         absence.end = eventData.end;
+      }
+      
       const absenceData: NewAbsenceRequest = {
          id: selectedWorkerId,
          absence,
-         type,
+         type: eventData.type
       };
 
       const response = await fetch('/api/postferias', {
@@ -39,9 +62,10 @@ const newAbsence = async (selectedWorkerId: string, type: 'vacation' | 'off-day'
 
       const result = await response.json();
       console.log(result.message);
+      return worker;
    } catch (error) {
       console.error('Error creating new absence:', error);
-      throw error; // Rethrow for handling in the calling context
+      throw error;
    }
 };
 

@@ -1,19 +1,23 @@
-import React, {useState, useEffect} from 'react';
-import { Text, TextInput, Button, ColorInput, NumberInput, Modal, Group, Combobox, InputBase, useCombobox } from '@mantine/core';
+import React, {useState} from 'react';
+import { Text, TextInput, Button, ColorInput, NumberInput, Modal, Group, Combobox, InputBase, useCombobox, Grid } from '@mantine/core';
 import { useForm } from '@mantine/form';
 
 import newWorker from '../utils/workers/newWorker';
 import updateWorker from '../utils/workers/updateWorkers';
-import { Worker } from '../utils/types';
+import { JRMWorkerData } from '../utils/types';
 
 interface WorkerModalProps {
    onClose: () => void;
    onUpdateWorkers: () => Promise<void>;
    showNotification: (title: string, message: string, color: string) => void;
-   currentWorker: Worker | null;
+   currentWorker: JRMWorkerData | null;
    departments: string[];
 }
 
+
+
+
+// Component
 const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, showNotification, currentWorker, departments }) => {
    //STATES
    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -38,7 +42,9 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
          title: currentWorker?.title || '',
          dep: currentWorker?.dep || '',
          color: currentWorker?.color || '#000000',
-         avaDays: currentWorker?.avaDays || 0
+         avaDays: currentWorker?.avaDays || 0,
+         compH: currentWorker?.compH || 0,
+         lunchH: currentWorker?.lunchH || 1
       },
       validate: { 
          title: (value) => (value.trim() ? null : 'Nome de colaborador obrigatório'),
@@ -46,33 +52,37 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
       },
    });
 
+
+
+
+
    // HANDLERS
    const handleFieldChange = (field: string, value: string) => {
       form.setFieldValue(field, value);
       if (value.trim() !== '') { form.setFieldError(field, null); }
    };
    const handleConfirm = async () => {
-      console.log("handleConfirm actionType:",actionType);
       if (actionType === 'submit') { await submitForm(); } 
       else if (actionType === 'cancel') { onClose(); }
       setIsConfirmOpen(false);
    };
    const handleActionClick = (action: 'submit' | 'cancel') => {
       setActionType(action);
-      console.log("handleActionClick setActionType:",actionType);
       if (action === 'submit') {
          const errors = form.validate();
          console.log("errors:");
          console.log(errors);
-         //if (Object.keys(errors).length === 0) {
-            if (!currentWorker || form.isDirty()) { setIsConfirmOpen(true); } 
-            else { submitForm(); }
-         //}
+         if (!currentWorker || form.isDirty()) { setIsConfirmOpen(true); } 
+         else { submitForm(); }
       } else {
          if (form.isDirty()) { setIsConfirmOpen(true); } 
          else { onClose(); }
       }
    };
+
+
+
+
 
    // SUBMIT
    const submitForm = async () => {
@@ -96,18 +106,14 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
       }
    };
 
-   useEffect(() => { console.log("isConfirmOpen: ",isConfirmOpen); }, [isConfirmOpen]);
-   useEffect(() => { console.log('Component re-rendered or prop changed:', currentWorker); }, [currentWorker]);
-   useEffect(() => { console.log(form.values); }, [form.values]);
+
+
+
 
    //JSX
    return (
       <>
-         <form onSubmit={(e)=>{
-            console.log(e);
-            console.log(e.preventDefault())
-            e.preventDefault();
-         }}>
+         <form onSubmit={(e)=>{e.preventDefault();}}>
             <TextInput
             label="Nome do Colaborador:"
             placeholder="Nome"
@@ -129,7 +135,6 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
                else { form.setFieldValue('dep', val); }
                combobox.closeDropdown();
                setSearch(val);
-               //setSearch(''); // Reset search field
             }}
             >
                <Combobox.Target>
@@ -165,18 +170,52 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
                </Combobox.Dropdown>
             </Combobox>
 
-            <NumberInput
-            label="Dias disponíveis:"
-            suffix=" dias"
-            description="para férias ou ausências"
-            mt="md"
-            defaultValue={0}
-            allowNegative={false}
-            allowDecimal={false}
-            stepHoldDelay={500}
-            stepHoldInterval={(t) => Math.max(1000 / t ** 2, 25)}
-            {...form.getInputProps('avaDays')}
-            />
+
+            {!currentWorker ?
+               <NumberInput
+               label="Dias disponíveis:"
+               suffix=" dias"
+               description="para férias ou ausências"
+               mt="md"
+               defaultValue={0}
+               allowNegative={false}
+               allowDecimal={false}
+               stepHoldDelay={500}
+               stepHoldInterval={(t) => Math.max(1000 / t ** 2, 25)}
+               {...form.getInputProps('avaDays')}
+               />
+            :
+               <Grid>
+                  <Grid.Col span={6}>
+                     <NumberInput
+                     label="Dias disponíveis:"
+                     suffix=" dias"
+                     description="para férias ou ausências"
+                     mt="md"
+                     defaultValue={0}
+                     allowNegative={false}
+                     allowDecimal={false}
+                     stepHoldDelay={500}
+                     stepHoldInterval={(t) => Math.max(1000 / t ** 2, 25)}
+                     {...form.getInputProps('avaDays')}
+                     />
+                  </Grid.Col>
+                  <Grid.Col span={6}>
+                     <NumberInput
+                     label="Horas a compensar:"
+                     suffix=" horas"
+                     description="de ausências parciais"
+                     mt="md"
+                     defaultValue={0}
+                     allowNegative={false}
+                     allowDecimal={false}
+                     stepHoldDelay={500}
+                     stepHoldInterval={(t) => Math.max(1000 / t ** 2, 25)}
+                     {...form.getInputProps('compH')}
+                     />
+                     </Grid.Col>
+               </Grid>
+            }
 
             <ColorInput
                label="Cor associada:"

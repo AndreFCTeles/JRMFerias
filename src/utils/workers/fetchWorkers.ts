@@ -1,6 +1,6 @@
-import { Worker, WorkersArray } from '../types';
+import { JRMWorkerData, WorkersArray } from '../types';
 
-const fetchWorkers = async (): Promise<Worker[]> => {
+const fetchWorkers = async (): Promise<JRMWorkerData[]> => {
    try {      
       const response = await fetch('/api/getferias');
       if (!response.ok) { throw new Error(`Falha na busca de ausências - FetchRequest: ${response.status}`); }

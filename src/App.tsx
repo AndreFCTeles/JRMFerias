@@ -3,8 +3,8 @@ import React, { useState, useEffect, useCallback }   from 'react';
 import { AppShell, Button, Modal, Flex, Drawer, Notification, Tooltip, SegmentedControl, Box, Text } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks';
 
-// Interfaces
-import { Worker, Credential, CredentialsResponse, CalendarEvent } from './utils/types';
+// Types
+import { JRMWorkerData, Credential, CredentialsResponse, CalendarEvent } from './utils/types';
 
 // Utils
 import fetchAbsences from './utils/absences/fetchAbsences';
@@ -19,6 +19,8 @@ import WorkerModal from './components/NewWorker';
 import AbsenceModal from './components/NewAbsence';
 import WorkerCalendar from './components/WorkerCalendar'
 import PrintCalendar from './components/PrintCalendar';
+import updateAbsence from './utils/absences/updateAbsence';
+//import updateWorker from './utils/workers/updateWorkers';
 
 
 
@@ -32,8 +34,8 @@ const App: React.FC = () => {
    const [showNewAbsenceModal, setShowNewAbsenceModal] = useState(false);   
    // triggers
    const [isLoggedIn, setIsLoggedIn] = useState(false);
-   const [calendarRefreshTrigger, setCalendarRefreshTrigger] = useState(false);
-   const [workers, setWorkers] = useState<Worker[]>([]);
+   //const [calendarRefreshTrigger, setCalendarRefreshTrigger] = useState(false);
+   const [workers, setWorkers] = useState<JRMWorkerData[]>([]);
    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
    const [departments, setDepartments] = useState<string[]>([])
    const [view, setView] = useState<'dayGridMonth' | 'multiMonthYear'>('dayGridMonth');
@@ -41,7 +43,7 @@ const App: React.FC = () => {
    const [opened, { open, close }] = useDisclosure(false);
    const [isPrintMode, setIsPrintMode] = useState(false);
    // editar dados
-   const [currentWorker, setCurrentWorker] = useState<Worker | null>(null);
+   const [currentWorker, setCurrentWorker] = useState<JRMWorkerData | null>(null);
    const [currentEvent, setCurrentEvent] = useState<CalendarEvent | null>(null);
    // notificações
    const [notification, setNotification] = useState({
@@ -51,6 +53,19 @@ const App: React.FC = () => {
       color: 'green',
    });
 
+   // Sistema de notificações
+   const showNotification = (title: string, message: string, color: string) => {
+      setNotification({
+         visible: true,
+         title,
+         message,
+         color,
+      });
+      setTimeout(() => { setNotification((prevState) => ({ ...prevState, visible: false })); }, 3000);
+   };
+
+
+
 
 
    // HANDLERS
@@ -58,7 +73,6 @@ const App: React.FC = () => {
       const response = await fetch('/api/getloginferias');
       const data: CredentialsResponse = await response.json();
       const userExists = data.credentials.some((cred: Credential) => cred.username === username && cred.password === password);
-      
       if (userExists){
          setIsLoggedIn(true);
          setShowLoginModal(false);
@@ -78,28 +92,42 @@ const App: React.FC = () => {
          await deleteWorker(workerId);
          await fetchAndUpdateWorkers();
          showNotification("Successo", "Colaborador eliminado com sucesso", "green");
-         triggerCalendarRefresh();
       } catch (error) {
          console.error('Erro ao eliminar colaborador:', error);
          showNotification("Erro", "Erro ao eliminar colaborador", "red");
       }
    };
    // Event handlers
-   const handleEventEdit = (eventId: string) => {   
+   const handleEventEdit = async (eventId: string, start?: string, end?: string) => {   
+      console.log("event being selected to edit on the calendar:", eventId);
       if (isLoggedIn){
          const eventToEdit  = calendarEvents.find(calendarEvent => calendarEvent.eventId === eventId);
          if (eventToEdit) {
             setCurrentEvent(eventToEdit);
-            setShowNewAbsenceModal(true);
-            triggerCalendarRefresh();
+            if (start && end) {
+               const updatedEvent = {
+                  ...eventToEdit,
+                  start,
+                  end
+               }
+               try {
+                  await updateAbsence(workers, eventId, updatedEvent);
+                  console.log("Event updated successfully");
+                  await fetchAndUpdateWorkers();
+               } catch (error) {
+                  console.error("Error updating event:", error);
+               }
+            }
+            else { setShowNewAbsenceModal(true); }
          } else { console.error("Event not found:", eventId); }
       }
    };
    const handleEventDelete = async (eventId: string) => {
+      //console.log(eventId);
       try {
          await deleteAbsence(eventId);
+         await fetchAndUpdateWorkers();
          showNotification("Success", "Ausência eliminada com sucesso", "green");
-         triggerCalendarRefresh();
       } catch (error) {
          console.error('Error deleting worker:', error);
          showNotification("Error", "Erro ao eliminar ausência", "red");
@@ -107,22 +135,8 @@ const App: React.FC = () => {
    };
    // View handlers
    const handleViewChange = useCallback((newView: 'dayGridMonth' | 'multiMonthYear') => { setView(newView); }, []);
-
-   // Sistema de notificações
-   const showNotification = (title: string, message: string, color: string) => {
-      setNotification({
-         visible: true,
-         title,
-         message,
-         color,
-      });
-      setTimeout(() => { setNotification((prevState) => ({ ...prevState, visible: false })); }, 3000);
-   };
-
-   // Resetters/re-renderers/Estados de Modals
-   const triggerCalendarRefresh = () => setCalendarRefreshTrigger(prev => !prev);
-   const handleLoginClose = () => { setShowLoginModal(false); }
-   // IMPORTANTE - Separei close de open por causa de bugs com a tecla Esc
+   // Modal handlers
+   const handleLoginClose = () => { setShowLoginModal(false); } // IMPORTANTE - Separei close de open por causa de bugs com a tecla Esc
    const handleNewWorkerClose = () => { 
       setCurrentWorker(null);
       setShowNewWorkerModal(false); };
@@ -139,8 +153,10 @@ const App: React.FC = () => {
       setShowNewAbsenceModal(true);
    };
 
-   // Fetching, Updating WorkerList
+
+   // App fetching
    const fetchAndUpdateWorkers = async () => {
+      console.log("calendar refreshed");
       try {
          const fetchedWorkers = await fetchWorkers();
          const fetchedEvents = await fetchAbsences();
@@ -151,6 +167,9 @@ const App: React.FC = () => {
       } catch (error) { console.error("Erro ao buscar colaboradores", error); }
    };
    useEffect(() => { fetchAndUpdateWorkers(); }, []); 
+
+
+
 
 
    //TSX
@@ -191,7 +210,7 @@ const App: React.FC = () => {
                         variant="light" 
                         ml={"50px"} 
                         style={{backgroundColor: "#FFF"}}
-                        onClick={triggerCalendarRefresh}
+                        onClick={fetchAndUpdateWorkers}
                         >Refrescar Calendário</Button>
                      </Tooltip>
                   </Box>
@@ -207,10 +226,8 @@ const App: React.FC = () => {
                         { label: 'Anual', value: 'multiMonthYear' }
                      ]}
                      />
-                  </Flex>
-                  
+                  </Flex>                  
                </Flex>
-
             </AppShell.Header>
 
             <AppShell.Navbar >
@@ -272,27 +289,36 @@ const App: React.FC = () => {
                <Modal
                opened={showNewAbsenceModal}
                onClose={() => setShowNewAbsenceModal(false)}
-               title="Nova Ausência"
+               title={currentEvent ? "Editar ausência" : "Nova ausência"}
                centered
                withCloseButton={true}
                className='formModal'
                overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}               
-               style={{ left: "0%", position: "absolute" }} >                  
+               style={{ 
+                  left: "0%", 
+                  position: "absolute",
+                  transition: "all 1s ease"
+               }}>                  
                   <AbsenceModal 
                   onClose={handleAbsenceClose} 
-                  onUpdateAbsences={triggerCalendarRefresh} 
+                  onUpdateAbsences={fetchAndUpdateWorkers} 
                   currentEvent={currentEvent}
+                  workers={workers}
                   />
                </Modal>
 
                {/* Calendar */}
                <WorkerCalendar 
-               refreshTrigger={calendarRefreshTrigger} 
+               //onRefreshData={fetchAndUpdateWorkers}
+               workerEvents={calendarEvents}
+               //jrmWorkers={workers}
+               //onEventsChange={updateCalendarEvents}
                onEventEdit={handleEventEdit}
                onEventDelete={handleEventDelete}
                showNotification={showNotification}
                isLoggedIn={isLoggedIn}
                view={view}
+               //onUpdateWorkers={handleUpdateWorkers} 
                />
             </AppShell.Main>
                
@@ -306,26 +332,26 @@ const App: React.FC = () => {
             size={isPrintMode? "100vw" : "99vw"}
             style={{position: "absolute"}} >
                <Drawer.Overlay />
-                  <Drawer.Content style={{
-                     display: 'flex', 
-                     flexDirection: 'column', 
-                     height: isPrintMode? "100vw" : '98vh', 
-                     width: isPrintMode? "100vw" : "99vw" 
+               <Drawer.Content style={{
+               display: 'flex', 
+               flexDirection: 'column', 
+               height: isPrintMode? "100vw" : '98vh', 
+               width: isPrintMode? "100vw" : "99vw" 
+               }}>
+                  <Drawer.Header style={{ 
+                  display: isPrintMode ? 'none' : 'flex', 
+                  backgroundColor:'#269AFF',
+                  color: '#FFF'
                   }}>
-                     <Drawer.Header style={{ 
-                        display: isPrintMode ? 'none' : 'flex', 
-                        backgroundColor:'#269AFF',
-                        color: '#FFF'
-                     }}>
-                        {!isPrintMode && ( <>
-                           <Drawer.Title fw={700}>Imprimir</Drawer.Title>
-                           <Drawer.CloseButton color='white'/>
-                        </> )}
-                     </Drawer.Header>
-                     <Drawer.Body style={{ flex: 1 }} h={"100%"}>
-                        <PrintCalendar isPrintMode={isPrintMode} setIsPrintMode={setIsPrintMode} />
-                     </Drawer.Body>
-                  </Drawer.Content>               
+                     {!isPrintMode && ( <>
+                        <Drawer.Title fw={700}>Imprimir</Drawer.Title>
+                        <Drawer.CloseButton color='white'/>
+                     </> )}
+                  </Drawer.Header>
+                  <Drawer.Body style={{ flex: 1 }} h={"100%"}>
+                     <PrintCalendar isPrintMode={isPrintMode} setIsPrintMode={setIsPrintMode} propWorkers={workers} />
+                  </Drawer.Body>
+               </Drawer.Content>               
             </Drawer.Root> 
          </AppShell>
       </>

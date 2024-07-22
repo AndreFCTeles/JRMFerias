@@ -6,8 +6,8 @@ import FullCalendar from '@fullcalendar/react';
 import multiMonthPlugin from '@fullcalendar/multimonth';
 import ptLocale from '@fullcalendar/core/locales/pt';
 
-import { Worker, CalendarEvent, ProcessedHolidayEvent } from '../utils/types';
-import fetchWorkers from '../utils/workers/fetchWorkers';
+import { JRMWorkerData, CalendarEvent, ProcessedHolidayEvent } from '../utils/types';
+//import fetchWorkers from '../utils/workers/fetchWorkers';
 import fetchAbsences from '../utils/absences/fetchAbsences';
 import fetchHolidays from '../utils/absences/fetchHolidays';
 import logoImage from '../assets/32logo_electrex.png';
@@ -17,6 +17,7 @@ import logoImage from '../assets/32logo_electrex.png';
 interface PrintCalendarProps {    
    isPrintMode: boolean;
    setIsPrintMode: (isPrintMode: boolean) => void; 
+   propWorkers: JRMWorkerData[];
 }
 interface FullCalendarMethods { getApi: () => { gotoDate: (dateStr: string) => void; }; }
 interface DateInfo { start: Date; }
@@ -26,9 +27,9 @@ interface DateInfo { start: Date; }
 
 
 // COMPONENT
-const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMode}) => {
+const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMode, propWorkers}) => {
    // STATES
-   const [workers, setWorkers] = useState<Worker[]>([]);
+   const [workers, setWorkers] = useState<JRMWorkerData[]>([]);
    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
    const [selectedWorkers, setSelectedWorkers] = useState<string[]>([]);
    const [selectedWorkerName, setSelectedWorkerName] = useState<string>('');
@@ -71,22 +72,14 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
 
    // EFFECTS
    useEffect(() => {
-      const initFetchWorkers = async () => {
-         try {
-            const fetchedWorkers = await fetchWorkers();
-            const filteredWorkers = fetchedWorkers.filter(worker => worker.id !== "1");
-            setWorkers(filteredWorkers);
-         } catch (error) {
-            console.error("Error fetching workers:", error);
-            setError('Failed to fetch workers.');
-         }
+      const initFetchWorkers = async () => {         
+         const filteredWorkers = propWorkers.filter(worker => worker.id !== "1");
+         setWorkers(filteredWorkers);
       };
       initFetchWorkers();
-   }, []);
+   }, [propWorkers]);
 
    useEffect(() => {
-      console.log(' ');
-      console.log('PrintCalendar');
       const fetchAndProcessEvents = async () => {
          try {
             const [absences, holidays] = await Promise.all([
@@ -94,8 +87,8 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
                fetchHolidays(selectedYear) || []
             ]);            
 
-            const JRMAbsences = absences.filter(event => event.id === "1");
-            const filteredAbsences = [...JRMAbsences, ...absences.filter(absEvent => selectedWorkers.includes(absEvent.id))];
+            const JRMAbsences = absences.filter(event => event.workerId === "1");
+            const filteredAbsences = [...JRMAbsences, ...absences.filter(absEvent => selectedWorkers.includes(absEvent.workerId))];
 
             // Clear titles for absence and holiday events
             filteredAbsences.forEach(absEvent => absEvent.title = '');

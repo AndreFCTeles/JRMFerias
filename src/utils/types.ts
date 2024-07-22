@@ -7,6 +7,10 @@ export interface Absence {
    id: string;
    start: Date | string;
    end?: Date | string;
+   busDays?: number;
+   allDay?: boolean;
+   absTime?: number;
+   lunch?: boolean;
 }
 
 export interface EventText {
@@ -15,7 +19,7 @@ export interface EventText {
 }
 
 
-export interface Worker {
+export interface JRMWorkerData {
    id: string;
    title: string;
    dep?: string;
@@ -23,6 +27,8 @@ export interface Worker {
    offDays: Absence[];
    color: string;
    avaDays: number;
+   compH?: number;
+   lunchH?: number;
 }
 
 export interface CalendarEvent {
@@ -36,6 +42,9 @@ export interface CalendarEvent {
    textColor?: string;
    allDay?: boolean;
    display?: string;
+   busDays?: number;
+   absTime?: number;
+   lunch?: boolean;
 }
 
 export interface HolidayAPIEvent {
@@ -64,10 +73,12 @@ export interface NewAbsenceRequest {
    id: string;
    absence: Absence;
    type: 'vacation' | 'off-day';
+   //avaDays: number;
+   //compH: number;
 }
 
 export interface WorkersArray {
-   workers: Worker[];
+   workers: JRMWorkerData[];
 }
 
 export interface CredentialsResponse {

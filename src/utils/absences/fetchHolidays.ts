@@ -19,8 +19,6 @@ const fetchHolidays = async (year: number): Promise<ProcessedHolidayEvent[]> => 
          textColor: 'black',
          display: 'background',
       }));
-      //console.log("fetchHolidays:")
-      //console.log(processedHolidayEvents);
       return processedHolidayEvents;
    } catch (error) { 
       console.error("Error fetching holiday events:", error); 
