@@ -1,11 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+// Frameworks
+import React, { useEffect, useRef, useState, memo } from 'react';
 import { DatePickerInput, DatesProvider, TimeInput  } from '@mantine/dates';
-import { Button, SegmentedControl, Select, ActionIcon, Text, Flex, rem } from '@mantine/core';
+import { Button, SegmentedControl, Select, ActionIcon, Text, Flex, rem, Group, Modal } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconCalendar, IconClock } from '@tabler/icons-react';
 import dayjs from 'dayjs';
-
+// Types
 import { CalendarEvent, JRMWorkerData } from '../utils/types';
+// Utils
 import newAbsence from '../utils/absences/newAbsence';
 import updateAbsence from '../utils/absences/updateAbsence';
 import { 
@@ -15,13 +17,15 @@ import {
    getVacationTypeFromId
 } from '../utils/generalUtils';
 
-// Interfaces
+// Props
 interface AbsenceModalProps {
    onClose: () => void;
    onUpdateAbsences: () => void; 
    currentEvent?: CalendarEvent | null;
    workers: JRMWorkerData[];
+   defaultDate?: Date | null;
 }
+// Assert Form Values
 interface AbsenceFormData {
    selectedWorkerId: string;
    vacationType: 'vacation' | 'off-day';
@@ -38,9 +42,13 @@ interface AbsenceFormData {
 
 
 
-// Component
-const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, currentEvent, workers }) => {
+// COMPONENT
+const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, currentEvent, workers, defaultDate }) => {
+   // STATES/VARS
+   // UI
    const [isFormReady, setIsFormReady] = useState(false);
+   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+   const [actionType, setActionType] = useState<'submit' | 'cancel' | ''>('');
    // Icons
    const calIcon = <IconCalendar style={{ width: rem(18), height: rem(18) }} stroke={1.5} />;
    const iconStartRef = useRef<HTMLInputElement>(null);
@@ -55,20 +63,15 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
          <IconClock style={{ width: rem(16), height: rem(16) }} stroke={1.5} />
       </ActionIcon>
    );
-
-
-
-
-
-
-   // Form values
+   
+   // Form values init para novos eventos
    const isInitialized = useRef(false);
    const form = useForm<AbsenceFormData>({
       initialValues: {
          vacationType: 'vacation',
          selectedWorkerId: '',
-         startDate: new Date(),
-         endDate: new Date(),
+         startDate: defaultDate || new Date(),
+         endDate:  defaultDate || new Date(),
          allDay: 'true',
          lunch: 'false',
          lunchH: '1',
@@ -76,7 +79,9 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
          endTime: dayjs(new Date()).format('HH:mm'),
       },
    });
-   // Form Effects
+
+   // EFFECTS
+   // Form values init para edição de eventos
    useEffect(() => { 
       if (!isInitialized.current) {
          if (currentEvent) {  
@@ -105,7 +110,8 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
          setIsFormReady(true);
       }
    }, [currentEvent, workers, form]);
-   // Form date auto-validation
+
+   // Auto-validação de datas - manter start menor ou igual a end
    useEffect(() => {
       if (form.values.startDate > form.values.endDate || form.values.vacationType === 'off-day') {
          form.setFieldValue('endDate', form.values.startDate);
@@ -119,7 +125,28 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
 
 
 
-   // Handlers
+   // HANDLERS
+   // UI
+   const handleConfirm = async () => {
+      if (actionType === 'submit') { await handleSubmit(form.values); } 
+      else if (actionType === 'cancel') { onClose(); }
+      setIsConfirmOpen(false);
+   };
+   const handleActionClick = (action: 'submit' | 'cancel') => {
+      setActionType(action);
+      if (action === 'submit') {
+         const errors = form.validate();
+         console.log("errors:");
+         console.log(errors);
+         if (!currentEvent || form.isDirty()) { setIsConfirmOpen(true); } 
+         else { handleSubmit(form.values); }
+      } else {
+         if (form.isDirty()) { setIsConfirmOpen(true); } 
+         else { onClose();  }
+      }
+   };
+   
+   // Submit
    const handleSubmit = async (values: AbsenceFormData) => {
       console.log(" ");
       console.log("-----------------------------");
@@ -127,12 +154,15 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
       let startDateTime = dayjs(values.startDate).format('YYYY-MM-DD');
       let endDateTime = dayjs(values.endDate).format('YYYY-MM-DD');
 
-      // Convert strings back to booleans
+      // Converter strings de SegmentedControl para booleans
       const allDay = values.allDay === 'true';
       const lunch = values.lunch === 'true';
       console.log("allDay:",allDay);
       console.log("lunch:",lunch);
 
+      // Processamento de dados consoante tipo de ausência
+
+      // Ausência parcial
       if (values.vacationType === 'off-day' && !allDay) {
          console.log("Partial day detected - calculating 'start' and 'end'...");
          const startTime = values.startTime || '00:00';
@@ -146,6 +176,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
          console.log("----------------------------------------");
       } 
 
+      // Férias ou Ausência (dia completo)
       let businessDays = 0;
       if (values.vacationType === 'vacation' || allDay) {
          console.log("Vacation or full-day absence detected - calculating business days...");
@@ -155,15 +186,17 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
       }      
 
       let absTime = values.vacationType === 'off-day' && !allDay ? calculateAbsenceHours(startDateTime, endDateTime) : 0;
+
+      // Calcular hora de almoço
       if (lunch && !allDay) { 
          console.log("Partial absence includes lunch...")
          absTime = Math.max(absTime - parseFloat(values.lunchH), 0); 
          console.log("Total absTime:", absTime);
          console.log("----------------------------------------");
-      } // Subtract one hour for lunch break
+      } 
 
+      // Encontrar worker selecionado (edição de dados existentes)
       const selectedWorker = workers.find(worker => worker.id === values.selectedWorkerId);
-
       if (selectedWorker) {
          const eventData = {
             id: currentEvent ? currentEvent.eventId : '',
@@ -187,14 +220,15 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
          console.log('workers:', workers);
          //console.log('workers, stringified:', JSON.stringify(workers, null, 2));
          console.log('selectedWorker:', selectedWorker)
-         console.log('selectedWorker, stringified:', JSON.stringify(selectedWorker, null, 2));
+         //console.log('selectedWorker, stringified:', JSON.stringify(selectedWorker, null, 2));
          console.log("----------------------------------------");
          console.log("eventData before 'trying' to submit: ", eventData);
 
+         // Submissão
          try {            
             console.log('Data to submit:');
             console.log(eventData);
-            console.log('Data to submit (stringified):', JSON.stringify(eventData, null, 2));
+            //console.log('Data to submit (stringified):', JSON.stringify(eventData, null, 2));
             console.log('Last date checks before submission:');
             console.log('eventData.start',eventData.start);
             console.log('eventData.end',eventData.end);
@@ -222,10 +256,11 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
       }
    };
 
-
-
-
    if (!isFormReady) return null;
+
+
+
+
 
    // JSX
    return (
@@ -400,11 +435,30 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
                   )}                     
                </Flex> 
             </>)}
-
-            <Button type='submit' mt='md' w={"100%"}>Confirmar</Button>
+            
+            <Group mt="md" justify='space-between'>
+               <Button onClick={() => handleActionClick('submit')} >{currentEvent ? 'Guardar Alterações' : 'Criar Evento'}</Button>
+               <Button color="gray" onClick={() => handleActionClick('cancel')} >Cancelar</Button>
+            </Group>
          </form>
+
+         {/* Confirm */}         
+         <Modal 
+         opened={isConfirmOpen} 
+         onClose={() => setIsConfirmOpen(false)} 
+         title="Confirmar"              
+         style={{
+            left: "0%",
+            position: "absolute"
+         }} >
+            <Text ta="center" mt="md">Tem certeza de que deseja {actionType === 'submit' ? (currentEvent ? 'atualizar dados' : 'criar esta ausência') : 'cancelar'}?</Text>
+            <Group mt="md" justify='center'>
+               <Button onClick={handleConfirm}>Confirmar</Button>
+               <Button onClick={() => setIsConfirmOpen(false)} color="gray">Cancelar</Button>
+            </Group>
+         </Modal>
       </>
    );
 };
 
-export default AbsenceModal;
+export default memo(AbsenceModal);

@@ -57,6 +57,7 @@ export interface HolidayAPIEvent {
    nationwide?: boolean;
    title?: string;
 }
+
 export interface ProcessedHolidayEvent {
    id: string;
    title: string;
@@ -73,8 +74,6 @@ export interface NewAbsenceRequest {
    id: string;
    absence: Absence;
    type: 'vacation' | 'off-day';
-   //avaDays: number;
-   //compH: number;
 }
 
 export interface WorkersArray {

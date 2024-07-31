@@ -17,6 +17,7 @@ const updateAbsence = async (workers: JRMWorkerData[], eventId: string, updatedD
    try {
       console.log('Received in updateAbsence:', JSON.stringify(updatedData, null, 2));
       
+      // Inferir worker e tipo de evento selecionado através de ID
       const [workerId, typeCode ] = eventId.split('-');
       const worker = workers.find((w: JRMWorkerData) => w.id === workerId);
       if (!worker) throw new Error("Worker not found.");
@@ -30,7 +31,7 @@ const updateAbsence = async (workers: JRMWorkerData[], eventId: string, updatedD
       console.log("type after update: ", updatedData.type);
       console.log("-------------------------------------------------------");
 
-      // redundante no caso de eventResize e eventDrop, mas necessário na criação de dados
+      // Redundante no caso de eventResize e eventDrop, mas necessário na criação de dados
       if (updatedData.type === 'off-day' && !updatedData.allDay) {
          updatedData.start = `${dayjs(updatedData.start).format('YYYY-MM-DD')}T${dayjs(updatedData.start).format('HH:mm')}`;
          updatedData.end = `${dayjs(updatedData.end).format('YYYY-MM-DD')}T${dayjs(updatedData.end).format('HH:mm')}`;
@@ -39,7 +40,7 @@ const updateAbsence = async (workers: JRMWorkerData[], eventId: string, updatedD
          updatedData.end = dayjs(updatedData.end).format('YYYY-MM-DD');
       }
 
-      // Calculate the new values
+      // Calcular novos valores
       let newBusDays = 0;
       let newAbsTime = 0;
       if (updatedData.type === 'vacation' || updatedData.allDay) {
@@ -51,7 +52,7 @@ const updateAbsence = async (workers: JRMWorkerData[], eventId: string, updatedD
          updatedData.absTime = newAbsTime;
       }
 
-      // Generate new ID if the type has changed
+      // Gerar ID se tipo de evento mudar
       if (eventTypeHasChanged) {
          console.log("as the event type has changed, we generate a new Id");
          updatedData.id = generateAbsenceId(worker, updatedData.type as 'vacation' | 'off-day');
@@ -59,6 +60,7 @@ const updateAbsence = async (workers: JRMWorkerData[], eventId: string, updatedD
       console.log("updated data: ", updatedData);
       console.log("^ This is the data that will be sent to the backend.");
 
+      // Enviar dados para API
       const response = await fetch(`/api/editferias/${eventId}`, {
          method: 'PATCH',
          headers: { 'Content-Type': 'application/json' },

@@ -1,20 +1,27 @@
-import React, { useState, FormEvent } from 'react';
+//Frameworks
+import React, { useState, FormEvent, memo } from 'react';
 import { TextInput, Button, PasswordInput, Center } from '@mantine/core';
 
+// Props
 interface LoginProps {
    onLoginSuccess: (username: string, password: string) => Promise<void>;
    onClose: () => void; 
 }
-
+// Assert Form Values
 interface User {
    username: string;
    password: string;
 }
 
+
+
+// COMPONENT
 const LoginModal: React.FC<LoginProps> = ({onLoginSuccess, onClose}) => {
+   // STATES
    const [username, setUsername] = useState('');
    const [password, setPassword] = useState('');
 
+   // HANDLERS
    const handleLogin = async (e: FormEvent) => {
       e.preventDefault();
       try {
@@ -35,6 +42,8 @@ const LoginModal: React.FC<LoginProps> = ({onLoginSuccess, onClose}) => {
       }
    };
 
+
+   // JSX
    return (
       <>      
          <form onSubmit={handleLogin}>
@@ -64,4 +73,4 @@ const LoginModal: React.FC<LoginProps> = ({onLoginSuccess, onClose}) => {
    );
 };
 
-export default LoginModal;
+export default memo(LoginModal);

@@ -23,10 +23,12 @@ const newAbsence = async (workers: JRMWorkerData[], selectedWorkerId: string, ev
    console.log("Received event data: ", eventData);
    console.log("Selected worker: ", selectedWorkerId);
    try {
+      // Encontrar worker através de ID
       const worker = workers.find((worker:JRMWorkerData) => worker.id === selectedWorkerId);
       if (!worker) throw new Error("Selected worker not found.");
       if (!eventData.end) eventData.end = eventData.start;
 
+      // Gerar ID de evento
       const newAbsenceId = generateAbsenceId(worker, eventData.type);
       const absence: Absence = {
          id: newAbsenceId,
@@ -34,6 +36,7 @@ const newAbsence = async (workers: JRMWorkerData[], selectedWorkerId: string, ev
          end: eventData.type === 'vacation' ? processDate(eventData.end) : processDate(eventData.start),
       };
 
+      // Atribuir campos de dados consoante tipo de evento
       if (eventData.type === 'vacation') {
          absence.busDays = eventData.busDays;
       } else if (eventData.type === 'off-day') {
@@ -46,7 +49,8 @@ const newAbsence = async (workers: JRMWorkerData[], selectedWorkerId: string, ev
          absence.start = eventData.start;
          absence.end = eventData.end;
       }
-      
+   
+      // Construir objeto e enviar dados para API
       const absenceData: NewAbsenceRequest = {
          id: selectedWorkerId,
          absence,

@@ -1,19 +1,18 @@
+// Frameworks
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {  Button, Select, Stack,  Grid, Container, Group, Title, Image, Notification } from '@mantine/core';
 import { YearPickerInput } from '@mantine/dates';
-
 import FullCalendar from '@fullcalendar/react';
 import multiMonthPlugin from '@fullcalendar/multimonth';
 import ptLocale from '@fullcalendar/core/locales/pt';
 
+// Utils
 import { JRMWorkerData, CalendarEvent, ProcessedHolidayEvent } from '../utils/types';
-//import fetchWorkers from '../utils/workers/fetchWorkers';
 import fetchAbsences from '../utils/absences/fetchAbsences';
 import fetchHolidays from '../utils/absences/fetchHolidays';
 import logoImage from '../assets/32logo_electrex.png';
 
-
-// INTERFACES
+// Props
 interface PrintCalendarProps {    
    isPrintMode: boolean;
    setIsPrintMode: (isPrintMode: boolean) => void; 
@@ -28,18 +27,21 @@ interface DateInfo { start: Date; }
 
 // COMPONENT
 const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMode, propWorkers}) => {
-   // STATES
-   const [workers, setWorkers] = useState<JRMWorkerData[]>([]);
+   // STATES/VARS
+   // Funcionalidade
+   const [error, setError] = useState<string | null>(null);
+   // Eventos/calendário
    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+   const [events, setEvents] = useState<CalendarEvent[]>([]);
+   const calendarRef = useRef(null);
+   // Colaboradores
+   const [workers, setWorkers] = useState<JRMWorkerData[]>([]);
    const [selectedWorkers, setSelectedWorkers] = useState<string[]>([]);
    const [selectedWorkerName, setSelectedWorkerName] = useState<string>('');
-   const [events, setEvents] = useState<CalendarEvent[]>([]);
-   const [error, setError] = useState<string | null>(null);
-   const calendarRef = useRef(null);
    const workerOptions = useMemo(() => workers.map(worker => ({ value: worker.id, label: worker.title })), [workers]);
 
 
-   // UTILS
+   // Utils
    const isWeekend = (date: Date) => {
       const day = date.getDay();
       return day === 0 || day === 6; // Sunday = 0, Saturday = 6
@@ -54,7 +56,7 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
    };
 
 
-   // HANDLERS
+   // Handlers
    const handleDatesSet = (dateInfo: DateInfo) => {
       const newYear = dateInfo.start.getFullYear();
       setSelectedYear(newYear);
@@ -71,14 +73,17 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
 
 
    // EFFECTS
+   // Inicializar lista de colaboradores
    useEffect(() => {
       const initFetchWorkers = async () => {         
+         // Filtrar fábrica
          const filteredWorkers = propWorkers.filter(worker => worker.id !== "1");
          setWorkers(filteredWorkers);
       };
       initFetchWorkers();
    }, [propWorkers]);
 
+   // Inicializar calendário
    useEffect(() => {
       const fetchAndProcessEvents = async () => {
          try {
@@ -87,23 +92,25 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
                fetchHolidays(selectedYear) || []
             ]);            
 
+            // Filtrar eventos mostrados por colaborador selecionado
             const JRMAbsences = absences.filter(event => event.workerId === "1");
             const filteredAbsences = [...JRMAbsences, ...absences.filter(absEvent => selectedWorkers.includes(absEvent.workerId))];
 
-            // Clear titles for absence and holiday events
+            // Retirar títulos de evento
             filteredAbsences.forEach(absEvent => absEvent.title = '');
             holidays.forEach((absEvent: ProcessedHolidayEvent) => absEvent.title = '');
 
+            // Ajustar eventos - workaround para mudança de display:block para display:background
             const adjustedEvents: CalendarEvent[] = [];
             filteredAbsences.forEach(absEvent => {
                const start = new Date(absEvent.start).getTime();
                const end = new Date(absEvent.end).getTime();
 
-               // Calculate the difference in days between the start and end dates
+               // Calcular dias entre start e end
                const diffTime = Math.abs(end - start);
                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-               // For events that span multiple days, create a new event for each day
+               // Dividir evento pelos dias
                if (diffDays > 0) {
                   for (let i = 0; i <= diffDays; i++) {
                      const newStart = new Date(start + (i * 1000 * 60 * 60 * 24));
@@ -117,6 +124,7 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
                      });
                   }
                } else {
+               // ou simplesmente apresentar dia
                   adjustedEvents.push({
                      ...absEvent,
                      id: `${absEvent.eventId}`,
@@ -127,6 +135,7 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
             });
             console.log("adjustedEvents: ", adjustedEvents)
 
+            // Atualizar objeto e estado de eventos a apresentar
             const allEvents = [...adjustedEvents, ...holidays];
             console.log("allEvents: ", allEvents);
 
@@ -140,6 +149,7 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
       fetchAndProcessEvents();
    }, [selectedYear, selectedWorkers]);
 
+   // Inicialização de componente calendário
    useEffect(() => {
       const calendarInstance = calendarRef.current as FullCalendarMethods | null;
       if (calendarInstance !== null) {
@@ -160,7 +170,7 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
                {error}
             </Notification>
          )}
-         {isPrintMode && (
+         {isPrintMode && ( // Esconder elementos no topo do componente para impressão
             <Container fluid h={50} py={"1%"} mt={"1%"}>
                <Group justify="space-between" grow>
                   <Group pl={"sm"} gap={0}>
@@ -172,7 +182,7 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
             </Container>
          )}
          <Grid>
-            {!isPrintMode && (
+            {!isPrintMode && ( // Mostrar elementos no topo do componente
                <Grid.Col span={isPrintMode ? 0 : 2}>
                   <Stack pt={"5%"}>               
                      <YearPickerInput
@@ -199,6 +209,7 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
                </Grid.Col>
             )}
 
+            {/* Calendário */}
             <Grid.Col 
             span={isPrintMode ? 12 : 10}   
             className='print-calendar-layout'          

@@ -1,11 +1,13 @@
-import React, {useState} from 'react';
+// Frameworks
+import React, {useState, memo} from 'react';
 import { Text, TextInput, Button, ColorInput, NumberInput, Modal, Group, Combobox, InputBase, useCombobox, Grid } from '@mantine/core';
 import { useForm } from '@mantine/form';
-
+// Utils
 import newWorker from '../utils/workers/newWorker';
 import updateWorker from '../utils/workers/updateWorkers';
 import { JRMWorkerData } from '../utils/types';
 
+// Props
 interface WorkerModalProps {
    onClose: () => void;
    onUpdateWorkers: () => Promise<void>;
@@ -17,26 +19,26 @@ interface WorkerModalProps {
 
 
 
-// Component
+// COMPONENT
 const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, showNotification, currentWorker, departments }) => {
-   //STATES
+   // STATES/VARS
+   // UI
    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-   const [actionType, setActionType] = useState('');   
+   const [actionType, setActionType] = useState<'submit' | 'cancel' | ''>('');
    const [search, setSearch] = useState(currentWorker?.dep || '');
-
-   
+   // WorkerName Combobox
    const combobox = useCombobox({ onDropdownClose: () => combobox.resetSelectedOption() });
    const exactOptionMatch = departments.some((item) => item === search);
    const filteredOptions = exactOptionMatch
       ? departments
       : departments.filter((item) => item.toLowerCase().includes(search.toLowerCase().trim()));
-
    const options = filteredOptions.map((item) => (
       <Combobox.Option value={item} key={item}>
          {item}
       </Combobox.Option>
    ));
-
+   
+   // Form values init
    const form = useForm({
       initialValues: {
          title: currentWorker?.title || '',
@@ -57,10 +59,6 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
 
 
    // HANDLERS
-   const handleFieldChange = (field: string, value: string) => {
-      form.setFieldValue(field, value);
-      if (value.trim() !== '') { form.setFieldError(field, null); }
-   };
    const handleConfirm = async () => {
       if (actionType === 'submit') { await submitForm(); } 
       else if (actionType === 'cancel') { onClose(); }
@@ -120,7 +118,6 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
             mt="md"
             required
             {...form.getInputProps('title')}
-            onChange={(event) => handleFieldChange('title', event.currentTarget.value)}
             />
 
             <Combobox
@@ -224,14 +221,12 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
             />
             
             <Group mt="md" justify='space-between'>
-               <Button 
-               onClick={() => handleActionClick('submit')}>{currentWorker ? 'Guardar Alterações' : 'Adicionar Colaborador'}</Button>
-               <Button 
-               color="gray" 
-               onClick={() => handleActionClick('cancel')}>Cancelar</Button>
+               <Button onClick={() => handleActionClick('submit')} >{currentWorker ? 'Guardar Alterações' : 'Adicionar Colaborador'}</Button>
+               <Button color="gray" onClick={() => handleActionClick('cancel')} >Cancelar</Button>
             </Group>
          </form>
 
+         {/* Confirm */}
          <Modal 
          opened={isConfirmOpen} 
          onClose={() => setIsConfirmOpen(false)} 
@@ -250,4 +245,4 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
    );
 };
 
-export default WorkerModal;
+export default memo(WorkerModal);
