@@ -25,7 +25,7 @@ const LoginModal: React.FC<LoginProps> = ({onLoginSuccess, onClose}) => {
    const handleLogin = async (e: FormEvent) => {
       e.preventDefault();
       try {
-         const res = await fetch('/api/getloginferias');
+         const res = await fetch('/api/ferias/getloginferias');
          if (!res.ok) throw new Error('Erro ao buscar credenciais');
          const data = await res.json();
          const user = data.credentials.find((u: User) => u.username === username && u.password === password);
@@ -41,6 +41,9 @@ const LoginModal: React.FC<LoginProps> = ({onLoginSuccess, onClose}) => {
             alert('Ocorreu um erro. Por favor tente novamente.');
       }
    };
+
+
+
 
 
    // JSX
@@ -65,9 +68,7 @@ const LoginModal: React.FC<LoginProps> = ({onLoginSuccess, onClose}) => {
                required
                onChange={(event) => setPassword(event.currentTarget.value)}        
             />
-            <Center>
-               <Button type='submit' mt='md'>Login</Button>
-            </Center>
+            <Center><Button type='submit' mt='md'>Login</Button></Center>
          </form>
       </>
    );

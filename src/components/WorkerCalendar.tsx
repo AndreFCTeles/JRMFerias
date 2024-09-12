@@ -30,6 +30,8 @@ interface WorkerCalendarProps {
    triggerOpenModal: boolean;
    resetTrigger: () => void;
    showNotification: (title: string, message: string, color: string) => void;
+   selectedDepartments: string[];
+   selectedWorkers: string[];
 }
 
 
@@ -45,7 +47,9 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
    fetchAndUpdateWorkers,
    triggerOpenModal,
    resetTrigger,
-   showNotification
+   showNotification,
+   selectedDepartments,
+   selectedWorkers
 }) => {
    // STATES/VARS
    // functionality
@@ -182,7 +186,23 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
       }
    };
 
+   const filterEvents = useCallback(() => {
+      return localEvents.filter((event) =>
+         selectedDepartments.includes(event.department || '') || selectedWorkers.includes(event.workerId || '')
+      );
+   }, [localEvents, selectedDepartments, selectedWorkers])
+
    // Processar dados para uso com FullCalendar
+   const getAdjustedEventsForDisplay = useCallback(() => {
+      return filterEvents().map(processedEvent => ({
+         ...processedEvent,
+         id: `${processedEvent.id}-${processedEvent.start}`,
+         end: processedEvent.end ? processDate(processedEvent.end, 1) : undefined,
+         originalEnd: processedEvent.end,
+         backgroundColor: processedEvent.backgroundColor
+      }));
+   }, [filterEvents]);
+   /*
    const getAdjustedEventsForDisplay = useCallback(() => {
       return localEvents.map(processedEvent => ({
          ...processedEvent,
@@ -192,6 +212,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
          backgroundColor: processedEvent.backgroundColor
       }));
    }, [localEvents]);
+   */
 
 
 

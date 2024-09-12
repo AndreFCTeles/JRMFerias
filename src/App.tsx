@@ -40,16 +40,16 @@ const App: React.FC = () => {
    const [showLoginModal, setShowLoginModal] = useState(false);
    const [showNewWorkerModal, setShowNewWorkerModal] = useState(false);
    const [opened, { open, close }] = useDisclosure(false);
-   // triggers
+   // UI
+   const [view, setView] = useState<'dayGridMonth' | 'multiMonthYear'>('dayGridMonth');
+   const [triggerOpenModal, setTriggerOpenModal] = useState(false);
+   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+   const [selectedWorkers, setSelectedWorkers] = useState<string[]>([]);
    const [isLoggedIn, setIsLoggedIn] = useState(false);
    const [workers, setWorkers] = useState<JRMWorkerData[]>([]);
    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
    const [departments, setDepartments] = useState<string[]>([]);
-   const [view, setView] = useState<'dayGridMonth' | 'multiMonthYear'>('dayGridMonth');
-   const [triggerOpenModal, setTriggerOpenModal] = useState(false);
-   // imprimir
    const [isPrintMode, setIsPrintMode] = useState(false);
-   // editar dados
    const [currentWorker, setCurrentWorker] = useState<JRMWorkerData | null>(null);
    // notificações
    const [notification, setNotification] = useState({
@@ -73,7 +73,7 @@ const App: React.FC = () => {
    // HANDLERS
    // Login
    const handleLoginSuccess = async (username: string, password: string) => {
-      const response = await fetch('/api/getloginferias');
+      const response = await fetch('/api/ferias/getloginferias');
       const data: CredentialsResponse = await response.json();
       const userExists = data.credentials.some((cred: Credential) => cred.username === username && cred.password === password);
       if (userExists) {
@@ -84,15 +84,7 @@ const App: React.FC = () => {
    const handleLoginClose = () => { 
       setShowLoginModal(false); // IMPORTANTE - Separei close de open por causa de bugs com a tecla Esc
    }
-   // Worker
-   const handleNewWorkerOpen = () => {
-      setCurrentWorker(null);
-      setShowNewWorkerModal(true);
-   };
-   const handleNewWorkerClose = () => { 
-      setCurrentWorker(null);
-      setShowNewWorkerModal(false);
-   };
+   // Worker handlers
    const handleWorkerEdit = (workerId: string) => {
       if (isLoggedIn) {
          const workerData = workers.find(worker => worker.id === workerId);
@@ -111,12 +103,21 @@ const App: React.FC = () => {
          showNotification("Erro", "Erro ao eliminar colaborador", "red");
       }
    };
+   // Worker Modal handlers
+   const handleNewWorkerOpen = () => {
+      setCurrentWorker(null);
+      setShowNewWorkerModal(true);
+   };
+   const handleNewWorkerClose = () => { 
+      setCurrentWorker(null);
+      setShowNewWorkerModal(false);
+   };
    // UI handlers
    const handleOpenModal = () => { setTriggerOpenModal(true); };
    const resetTrigger = () => { setTriggerOpenModal(false); };
    const handleViewChange = useCallback((newView: 'dayGridMonth' | 'multiMonthYear') => { setView(newView); }, []);
 
-   // App Data
+   // App data fetching
    const fetchAndUpdateWorkers = async () => {
       try {
          console.log("App fetching data");
@@ -128,8 +129,19 @@ const App: React.FC = () => {
          setWorkers(fetchedWorkers);
       } catch (error) { console.error("Erro ao buscar colaboradores", error); }
    };
+
+   // EFFECTS
+   // Inicialização dos dados
    useEffect(() => { fetchAndUpdateWorkers(); }, []);
    useEffect(()=>{ console.log("App rendered") }, [])
+   // Inicialização de filtragem
+   useEffect(() => {
+      setSelectedDepartments(departments);
+      setSelectedWorkers(workers.map(worker => worker.id));
+   }, [departments, workers]);
+
+
+
 
 
    // JSX
@@ -206,6 +218,11 @@ const App: React.FC = () => {
             onWorkerDelete={handleWorkerDelete}
             isLoggedIn={isLoggedIn}
             showNotification={showNotification}
+
+            selectedDepartments={selectedDepartments}
+            setSelectedDepartments={setSelectedDepartments}
+            selectedWorkers={selectedWorkers}
+            setSelectedWorkers={setSelectedWorkers}
             />
          </AppShell.Navbar>
 
@@ -271,6 +288,9 @@ const App: React.FC = () => {
                fetchAndUpdateWorkers={fetchAndUpdateWorkers}
                triggerOpenModal={triggerOpenModal} 
                resetTrigger={resetTrigger}
+
+               selectedDepartments={selectedDepartments}
+               selectedWorkers={selectedWorkers}
                />
             </ScrollArea>
          </AppShell.Main>

@@ -33,8 +33,10 @@ export interface JRMWorkerData {
 
 export interface CalendarEvent {
    id: string;
+   workerId?: string;
    title: string;
    eventId: string;
+   department?: string;
    start: string;
    end: string;
    borderColor?: string;

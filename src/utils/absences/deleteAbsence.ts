@@ -1,6 +1,6 @@
 const deleteAbsence = async (eventId: string) => {
    try {
-      const response = await fetch(`/api/deleteferias/${eventId}`, { method: 'DELETE', });
+      const response = await fetch(`/api/ferias/deleteferias/${eventId}`, { method: 'DELETE', });
       if (!response.ok) { throw new Error('Failed to delete absence'); }
 
       const result = await response.json();

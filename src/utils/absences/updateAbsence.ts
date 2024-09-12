@@ -61,7 +61,7 @@ const updateAbsence = async (workers: JRMWorkerData[], eventId: string, updatedD
       console.log("^ This is the data that will be sent to the backend.");
 
       // Enviar dados para API
-      const response = await fetch(`/api/editferias/${eventId}`, {
+      const response = await fetch(`/api/ferias/editferias/${eventId}`, {
          method: 'PATCH',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify(updatedData),

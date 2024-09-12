@@ -1,6 +1,6 @@
 const newWorker = async (data: object) => {
    try {      
-      const response = await fetch('/api/novocolab', {
+      const response = await fetch('/api/ferias/novocolab', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify(data),

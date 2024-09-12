@@ -2,13 +2,14 @@ import { JRMWorkerData } from "../types";
 
 const fetchAbsences = async () => {
    try {
-      const workersResponse = await fetch('/api/getferias', { cache: 'no-store' });
+      const workersResponse = await fetch('/api/ferias/getferias', { cache: 'no-store' });
       const { workers } = await workersResponse.json();
       const vacationEvents = workers.flatMap((worker: JRMWorkerData) => worker.vacations.map(vacation => ({
          id: vacation.id,
          title: `${worker.title} (Férias)`,
          eventId: vacation.id,
          workerId: worker.id,
+         department: worker.dep,
          start: vacation.start,
          end: vacation.end,
          borderColor: worker.color,
@@ -23,6 +24,7 @@ const fetchAbsences = async () => {
          title: `${worker.title} (Ausência)`,
          eventId: offDay.id,
          workerId: worker.id,
+         department: worker.dep,
          start: offDay.start,
          end: offDay.end, //|| offDay.start,
          borderColor: worker.color,

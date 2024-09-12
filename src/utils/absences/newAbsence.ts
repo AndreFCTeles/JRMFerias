@@ -57,7 +57,7 @@ const newAbsence = async (workers: JRMWorkerData[], selectedWorkerId: string, ev
          type: eventData.type
       };
 
-      const response = await fetch('/api/postferias', {
+      const response = await fetch('/api/ferias/postferias', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify(absenceData),

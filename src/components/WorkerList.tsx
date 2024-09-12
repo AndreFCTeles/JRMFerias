@@ -1,7 +1,7 @@
 // Frameworks
-import React, {useState, useEffect, memo} from "react";
+import React, {useState, useEffect, memo } from "react";
 import { 
-   Card, 
+   Flex, 
    Text, 
    Badge, 
    Title, 
@@ -12,7 +12,8 @@ import {
    Button, 
    Accordion, 
    Stack, 
-   Grid
+   Grid,
+   Checkbox
 } from '@mantine/core';
 import { useContextMenu} from 'mantine-contextmenu';
 // Types
@@ -25,12 +26,26 @@ interface WorkerListProps {
    onWorkerDelete: (WorkerID: string) => void;
    showNotification: (title: string, message: string, color: string) => void;
    isLoggedIn: boolean;
+   selectedDepartments: string[];
+   setSelectedDepartments: React.Dispatch<React.SetStateAction<string[]>>;
+   selectedWorkers: string[];
+   setSelectedWorkers: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 
 
 // COMPONENT
-const WorkerList: React.FC<WorkerListProps> = ({ workers, onWorkerEdit, onWorkerDelete, showNotification, isLoggedIn }) => {
+const WorkerList: React.FC<WorkerListProps> = ({ 
+   workers, 
+   onWorkerEdit, 
+   onWorkerDelete, 
+   showNotification, 
+   isLoggedIn, 
+   setSelectedDepartments,
+   selectedDepartments, 
+   setSelectedWorkers,
+   selectedWorkers 
+}) => {
    // STATES/VARS
    // UI
    const { showContextMenu } = useContextMenu();
@@ -62,7 +77,8 @@ const WorkerList: React.FC<WorkerListProps> = ({ workers, onWorkerEdit, onWorker
       setDepartmentGroups(groups);
    }, [workers]);
 
-   // Handlers
+   // HANDLERS
+   // Confirmação
    const handleConfirm = async () => {
       if (selectedWorkerId) {
          onWorkerDelete(selectedWorkerId);
@@ -70,145 +86,219 @@ const WorkerList: React.FC<WorkerListProps> = ({ workers, onWorkerEdit, onWorker
          setSelectedWorkerId(null);
       }
    };
+   // Checkboxes departamento
+   const handleDepartmentChange = (department: string) => {
+      const isSelected = selectedDepartments.includes(department);
+      const newSelectedDepartments = isSelected 
+         ? selectedDepartments.filter(dep => dep !== department) 
+         : [...selectedDepartments, department];
+      setSelectedDepartments(newSelectedDepartments);
+
+      const departmentWorkers = workers.filter(worker => worker.dep === department).map(worker => worker.id);
+      const newSelectedWorkers = isSelected 
+         ? selectedWorkers.filter(workerId => !departmentWorkers.includes(workerId))
+         : [...selectedWorkers, ...departmentWorkers];
+      setSelectedWorkers(newSelectedWorkers);
+   };
+   // Checkboxes colaborador
+   const handleWorkerChange = (workerId: string, department: string) => {
+      const isSelected = selectedWorkers.includes(workerId);
+      const newSelectedWorkers = isSelected 
+         ? selectedWorkers.filter(id => id !== workerId)
+         : [...selectedWorkers, workerId];
+      setSelectedWorkers(newSelectedWorkers);
+
+      const departmentWorkers = workers.filter(worker => worker.dep === department).map(worker => worker.id);
+      const allDepartmentWorkersSelected = departmentWorkers.every(workerId => newSelectedWorkers.includes(workerId));
+
+      if (allDepartmentWorkersSelected) {
+         setSelectedDepartments(prev => prev.includes(department) ? prev : [...prev, department]);
+      } else {
+         setSelectedDepartments(prev => prev.filter(dep => dep !== department));
+      }
+   };
+
 
    // Utils
    const getDayColor = (value: number) => {
-      if (value >= 0 && value < 5) return 'red';
+      if (value < 5) return 'red';
       if (value >= 5 && value < 10) return 'orange';
       if (value >= 10 && value < 15) return 'yellow';
       return 'green';
    };
    const getHourColor = (value: number) => {
-      if (value >= 0 && value < 3) return 'green';
+      if (value < 3) return 'green';
       if (value >= 3 && value < 5) return 'yellow';
       if (value >= 5 && value < 8) return 'orange';
       return 'red';
    };
 
    // Geração dinâmica de elementos da lista
-   const accordionItems = Array.from(departmentGroups).map(([department, deptWorkers]) => (
-      <Accordion.Item key={department} value={department}>
-         <Accordion.Control>{department}</Accordion.Control>
-         <Accordion.Panel px={0}>            
-            <ScrollArea 
-            h={deptWorkers.length > maxVisibleCards ? maxVisibleHeight : 'auto'}
-            w={"100%"}  
-            px={0}
-            mx={0}
-            scrollbarSize={6}
-            offsetScrollbars>
-               {deptWorkers.map((worker) => {
-                  const fullName = worker.title;
-                  const nameParts = fullName.split(' ');
-                  const firstName = nameParts[0];
-                  const lastName = nameParts[nameParts.length - 1];
-                  const displayName = firstName + (nameParts.length > 1 ? (' ' + lastName) : '');
+   const accordionItems = Array.from(departmentGroups).map(([department, deptWorkers]) => {      
+      const isDepartmentChecked = (department: string) => {
+         const departmentWorkers = workers.filter(worker => worker.dep === department).map(worker => worker.id);
+         const allSelected = departmentWorkers.every(workerId => selectedWorkers.includes(workerId));
+         const noneSelected = departmentWorkers.every(workerId => !selectedWorkers.includes(workerId));
+         return allSelected ? true : noneSelected ? false : 'indeterminate';
+      }; 
 
-                  return (
-                     <Tooltip openDelay={500}
-                     key={worker.id}
-                     label={isLoggedIn 
-                        ? `Editar ou eliminar ${displayName}` 
-                        : 'Clique em "Login" e introduza as suas credenciais para editar informações de colaborador'
-                     }
-                     position="bottom"
-                     multiline
-                     >
-                        {/* Worker Card */}
-                        <Card 
-                        key={worker.id} 
-                        className='worker_card' 
-                        shadow="sm" 
-                        mt="xs" 
-                        mx="xs" 
-                        radius="md" 
-                        withBorder
-                        onContextMenu={
-                           showContextMenu([
-                              isLoggedIn ? {                        
-                                 key: 'edit',
-                                 title: 'Editar dados',
-                                 onClick: () => onWorkerEdit(worker.id)
-                              } : {
-                                 key: 'editLoginReminder',
-                                 title: 'Editar dados',
-                                 onClick: () => showNotification(
-                                    "Requer Login", 
-                                    'Por favor clique "Login" e introduza as suas credenciais de acesso para efetuar esta operação', 
-                                    "red"
-                                 ),
-                              },                    
-                              isLoggedIn ? {
-                                 key: 'del',
-                                 title: 'Eliminar colaborador',
-                                 onClick: () => {
-                                 setSelectedWorkerId(worker.id);
-                                 setIsConfirmOpen(true);
-                                 }
-                              } : {
-                                 key: 'delLoginReminder',
-                                 title: 'Eliminar colaborador',
-                                 onClick: () => showNotification(
-                                    "Requer Login", 
-                                    'Por favor clique "Login" e introduza as suas credenciais de acesso para efetuar esta operação', 
-                                    "red"
-                                 ),
-                              },
-                           ])
+      return (
+         <Accordion.Item 
+         key={department} 
+         value={department}>
+            <Accordion.Control>
+               <Grid>
+                  <Grid.Col span={2}>
+                     <Checkbox
+                     label={``}
+                     checked={selectedDepartments.includes(department)}
+                     indeterminate={isDepartmentChecked(department) === 'indeterminate'}
+                     onClick={(event) => event.stopPropagation()}
+                     onChange={() => handleDepartmentChange(department)}
+                     />
+                  </Grid.Col>
+                  <Grid.Col span={9}>
+                     <Text truncate="end">{department}</Text>                   
+                  </Grid.Col>
+               </Grid>
+            </Accordion.Control>
+            <Accordion.Panel px={0}>            
+               <ScrollArea 
+               h={deptWorkers.length > maxVisibleCards ? maxVisibleHeight : 'auto'}
+               w={"100%"}  
+               px={0}
+               mx={0}
+               scrollbarSize={6}
+               offsetScrollbars>
+                  {deptWorkers.map((worker) => {
+                     const fullName = worker.title;
+                     const nameParts = fullName.split(' ');
+                     const firstName = nameParts[0];
+                     const lastName = nameParts[nameParts.length - 1];
+                     const displayName = firstName + (nameParts.length > 1 ? (' ' + lastName) : '');
+
+                     return (
+                        <Tooltip openDelay={500}
+                        key={worker.id}
+                        label={isLoggedIn 
+                           ? `Editar ou eliminar ${displayName}` 
+                           : 'Clique em "Login" e introduza as suas credenciais para editar informações de colaborador'
                         }
-                        onDoubleClick={() => onWorkerEdit(worker.id)}
-                        style={{borderColor: worker.color}}
+                        position="bottom"
+                        multiline
                         >
-
-                           {/* Content */}
-                           <Grid w="100%" align="center">                                 
-                              <Tooltip openDelay={500} key={worker.id} label={worker.title}>
-                                 <Grid.Col span={{base:12, sm:6}}>
-                                    <Text fw={600} size="lg" ta="left" style={{lineHeight:"1.2"}}>{`${displayName}`}</Text>
+                           {/* Worker Card */}
+                           <Checkbox.Card
+                           key={worker.id}
+                           checked={selectedWorkers.includes(worker.id)}
+                           onClick={() => handleWorkerChange(worker.id, department)}
+                           className='worker_card' 
+                           mt="xs" 
+                           radius="md" 
+                           withBorder
+                           onContextMenu={
+                              showContextMenu([
+                                 isLoggedIn ? {                        
+                                    key: 'edit',
+                                    title: 'Editar dados',
+                                    onClick: () => onWorkerEdit(worker.id)
+                                 } : {
+                                    key: 'editLoginReminder',
+                                    title: 'Editar dados',
+                                    onClick: () => showNotification(
+                                       "Requer Login", 
+                                       'Por favor clique "Login" e introduza as suas credenciais de acesso para efetuar esta operação', 
+                                       "red"
+                                    ),
+                                 },                    
+                                 isLoggedIn ? {
+                                    key: 'del',
+                                    title: 'Eliminar colaborador',
+                                    onClick: () => {
+                                       setSelectedWorkerId(worker.id);
+                                       setIsConfirmOpen(true);
+                                    }
+                                 } : {
+                                    key: 'delLoginReminder',
+                                    title: 'Eliminar colaborador',
+                                    onClick: () => showNotification(
+                                       "Requer Login", 
+                                       'Por favor clique "Login" e introduza as suas credenciais de acesso para efetuar esta operação', 
+                                       "red"
+                                    ),
+                                 },
+                              ])
+                           }
+                           onDoubleClick={() => onWorkerEdit(worker.id)}
+                           style={{borderColor: worker.color}}
+                           >
+                              {/* Content */}
+                              <Grid w="100%" justify="center" align="center" p={department==='JRMatos'? "md" : 0 } m={0}>   
+                                 <Grid.Col span={{base:12, md:8}} p={"md"}> 
+                                    <Group>
+                                       <Checkbox.Indicator />                          
+                                       <Tooltip openDelay={500} key={worker.id} label={worker.title}>
+                                          <Text truncate="end" fw={600} size="lg" ta="left" style={{lineHeight:"1.2"}}>{`${displayName}`}</Text>
+                                       </Tooltip>
+                                    </Group>
                                  </Grid.Col>
-                              </Tooltip>
 
-                              {/* Absence Stats */}
-                              <Grid.Col span={{base:12, sm:6}}>
-                                 <Stack gap={1} align="flex-end" pr={2} pb={2}>
-                                    <Group gap={5}>
-                                       <Tooltip
-                                       multiline
-                                       withArrow
-                                       arrowOffset={50} 
-                                       arrowSize={8}
-                                       label="Dias disponíveis para ausência">
-                                          <Group gap={2}>
-                                             <Text fw={600} size="xs">Dias</Text>
-                                             <Badge variant="dot" color={getDayColor( worker.avaDays?worker.avaDays:0 )}>{worker.avaDays}</Badge>
-                                          </Group>
-                                       </Tooltip>
-                                    </Group>
-                                    <Group gap={5}>
-                                       <Tooltip
-                                       multiline
-                                       withArrow
-                                       arrowOffset={50} 
-                                       arrowSize={8}
-                                       label="Horas a compensar">
-                                          <Group gap={2}>
-                                             <Text fw={600} size="xs">Horas</Text>
-                                             <Badge variant="dot" color={ getHourColor( worker.compH?worker.compH:0 )}>{worker.compH?worker.compH:0}</Badge>
-                                          </Group>
-                                       </Tooltip>
-                                    </Group>
-                                 </Stack>
-                              </Grid.Col>
+                                 {/* Absence Stats */}
+                                 <Grid.Col span={{base:12, md:4}} p={"md"}>
+                                    <Stack gap={3} align="center" pr={2} pb={2} justify="center">
+                                       {!(department==='JRMatos') && <>                                    
+                                       <Group preventGrowOverflow={false} wrap="nowrap" justify="center" align="center">
+                                          <Tooltip
+                                          multiline
+                                          withArrow
+                                          arrowOffset={50} 
+                                          arrowSize={8}
+                                          label="Dias disponíveis para ausência">
+                                             <Flex
+                                             gap="xs"
+                                             justify="center"
+                                             align="center"
+                                             direction="row"
+                                             wrap="nowrap"
+                                             >
+                                                <Badge variant="dot" color={getDayColor( worker.avaDays?worker.avaDays:0 )}>{worker.avaDays}</Badge>
+                                                <Text truncate="end" fw={600} size="xs">Dias</Text>
+                                             </Flex>
+                                          </Tooltip>
+                                       </Group>
+                                       <Group preventGrowOverflow={false} wrap="nowrap">
+                                          <Tooltip
+                                          multiline
+                                          withArrow
+                                          arrowOffset={50} 
+                                          arrowSize={8}
+                                          label="Horas a compensar">
+                                             <Flex
+                                             gap="xs"
+                                             justify="center"
+                                             align="center"
+                                             direction="row"
+                                             wrap="nowrap"
+                                             >
+                                                <Badge variant="dot" color={ getHourColor( worker.compH?worker.compH:0 )}>{worker.compH?worker.compH:0}</Badge>
+                                                <Text truncate="end" fw={600} size="xs">Horas</Text>
+                                             </Flex>
+                                          </Tooltip>
+                                       </Group>
+                                       </>}
+                                    </Stack>
+                                 </Grid.Col>
 
-                           </Grid>
-                        </Card>  
-                     </Tooltip>
+                              </Grid>
+                           </Checkbox.Card>
+
+                        </Tooltip>
+                     )}
                   )}
-               )}
-            </ScrollArea>
-         </Accordion.Panel>
-      </Accordion.Item>
-   ));
+               </ScrollArea>
+            </Accordion.Panel>
+         </Accordion.Item>
+   )});
 
 
 
@@ -225,7 +315,11 @@ const WorkerList: React.FC<WorkerListProps> = ({ workers, onWorkerEdit, onWorker
 
          {/* Worker List */}
          <ScrollArea h={'full'}>
-            <Accordion radius={0} chevronPosition="left" defaultValue={departmentGroups.keys().next().value}>
+            <Accordion 
+            radius={0} 
+            chevronPosition="right" 
+            defaultValue={departmentGroups.keys().next().value}
+            >
                {accordionItems}
             </Accordion> 
          </ScrollArea>

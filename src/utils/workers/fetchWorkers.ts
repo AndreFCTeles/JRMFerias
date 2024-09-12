@@ -2,8 +2,8 @@ import { JRMWorkerData, WorkersArray } from '../types';
 
 const fetchWorkers = async (): Promise<JRMWorkerData[]> => {
    try {      
-      const response = await fetch('/api/getferias');
-      if (!response.ok) { throw new Error(`Falha na busca de ausências - FetchRequest: ${response.status}`); }
+      const response = await fetch('/api/ferias/getferias');
+      if (!response.ok) { throw new Error(`Falha na busca de ausências - FetchRequest: ${response.status} - ${response.statusText}`); }
       const data: WorkersArray = await response.json();
       return data.workers;
    } catch (error) {
