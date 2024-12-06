@@ -7,6 +7,8 @@ const fetchHolidays = async (year: number): Promise<ProcessedHolidayEvent[]> => 
    const validTo = `${year}-12-31`;
    try {
       const holidaysResponse = await fetch(`${PUBLIC_HOLIDAYS_URL}?countryIsoCode=PT&languageIsoCode=PT&validFrom=${validFrom}&validTo=${validTo}&subdivisionCode=PT-AV-AV`);
+      console.log(`https://openholidaysapi.org/PublicHolidays?countryIsoCode=PT&languageIsoCode=PT&validFrom=${validFrom}&validTo=${validTo}&subdivisionCode=PT-AV-AV`)
+      console.log(holidaysResponse);
       const holidaysData = await holidaysResponse.json();      
       const processedHolidayEvents = holidaysData.map((holiday: HolidayAPIEvent) => ({
          id: holiday.id,
@@ -18,7 +20,9 @@ const fetchHolidays = async (year: number): Promise<ProcessedHolidayEvent[]> => 
          backgroundColor: 'rgba(255,0,0,0.3)',
          textColor: 'black',
          display: 'background',
+         allDay: true
       }));
+      console.log(holidaysData)
       return processedHolidayEvents;
    } catch (error) { 
       console.error("Error fetching holiday events:", error); 

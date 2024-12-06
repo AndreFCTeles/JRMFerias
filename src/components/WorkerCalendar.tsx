@@ -90,6 +90,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
             ...(currentYearHolidays || [])
          ];
          setLocalEvents(combinedEvents);
+         console.log(combinedEvents)
       } catch (error) {
          console.error('Error fetching events:', error);
          setError('Ocorreu um problema ao carregar dados. Por favor tente mais tarde.');
@@ -152,6 +153,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
       setCurrentEvent(null);
       setShowNewAbsenceModal(false);
    };
+
    
    // Double-click: Criar nova ausência em dia vazio
    const handleDateDoubleClick = (arg: DateClickArg) => {
@@ -188,7 +190,9 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
 
    const filterEvents = useCallback(() => {
       return localEvents.filter((event) =>
-         selectedDepartments.includes(event.department || '') || selectedWorkers.includes(event.workerId || '')
+         event.display === 'background' ||
+         selectedDepartments.includes(event.department || '') || 
+         selectedWorkers.includes(event.workerId || '')
       );
    }, [localEvents, selectedDepartments, selectedWorkers])
 
@@ -202,18 +206,6 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
          backgroundColor: processedEvent.backgroundColor
       }));
    }, [filterEvents]);
-   /*
-   const getAdjustedEventsForDisplay = useCallback(() => {
-      return localEvents.map(processedEvent => ({
-         ...processedEvent,
-         id: `${processedEvent.id}-${processedEvent.start}`,
-         end: processedEvent.end ? processDate(processedEvent.end, 1) : undefined,
-         originalEnd: processedEvent.end,
-         backgroundColor: processedEvent.backgroundColor
-      }));
-   }, [localEvents]);
-   */
-
 
 
 
@@ -309,7 +301,15 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
             const tooltipContent = formattedStartDate !== formattedEndDate
                                  ? `${event.title}:\n De ${formattedStartDate} a ${formattedEndDate}`
                                  : `${event.title}: ${formattedStartDate}`;
-            const backgroundEvent = <div>{view === 'dayGridMonth'? event.title : 'Feriado'}</div>;
+            const backgroundEvent = <Tooltip label={event.title}>
+                                       <div style={{
+                                          fontSize:'12px',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis'
+                                       }}>{/*view === 'dayGridMonth'? event.title : 'Feriado' */}
+                                          Feriado
+                                       </div>
+                                    </Tooltip>;
 
             const regularEvent = <Tooltip 
                multiline
