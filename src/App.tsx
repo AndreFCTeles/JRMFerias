@@ -35,7 +35,7 @@ import WorkerCalendar from './components/WorkerCalendar';
 // COMPONENT
 const App: React.FC = () => {
 
-   //STATES
+   // STATES
    // modals
    const [showLoginModal, setShowLoginModal] = useState(false);
    const [showNewWorkerModal, setShowNewWorkerModal] = useState(false);
@@ -52,23 +52,36 @@ const App: React.FC = () => {
    const [isPrintMode, setIsPrintMode] = useState(false);
    const [currentWorker, setCurrentWorker] = useState<JRMWorkerData | null>(null);
    // notificações
+   const [notification, setNotification] = useState<{
+      visible: boolean;
+      title: string;
+      message: string | React.ReactNode;
+      color: string;
+   }>({
+      visible: false,
+      title: '',
+      message: '',
+      color: 'green',
+   });
+   /*
    const [notification, setNotification] = useState({
       visible: false,
       title: '',
       message: '',
       color: 'green',
    });
+   */
 
    // Notification 
-   const showNotification = (title: string, message: string, color: string) => {
+   const showNotification = useCallback((title: string, message: string | React.ReactNode, color: string) => {
       setNotification({
          visible: true,
          title,
          message,
          color,
       });
-      setTimeout(() => { setNotification((prevState) => ({ ...prevState, visible: false })); }, 3000);
-   };
+      setTimeout(() => { setNotification((prevState) => ({ ...prevState, visible: false })); }, 5000);
+   }, []);
 
    // HANDLERS
    // Login
@@ -227,15 +240,25 @@ const App: React.FC = () => {
          </AppShell.Navbar>
 
          <AppShell.Main>
-            {/* Notifications */}
+            {/* Notifications */}{/*notification.message*/}
             {notification.visible && (
                <Notification
                withBorder
                color={notification.color}
                title={notification.title}
-               style={{ position:"absolute", width: "70vw", zIndex: 199 }}
-               onClose={() => setNotification((prevState) => ({ ...prevState, visible: false }))}
-               >{notification.message}</Notification>
+               style={{ 
+                  position:"absolute", 
+                  width: "70vw", 
+                  zIndex: 199,
+                  transition: "all 2s, ease-in-out 2s"
+               }}
+               onClose={
+                  () => setNotification((prevState) => ({ ...prevState, visible: false }))
+               }>
+                  {typeof notification.message === "string" ? (
+                     <Text>{notification.message}</Text>
+                  ) : (notification.message)}
+               </Notification> 
             )}
 
             {/* Login */}

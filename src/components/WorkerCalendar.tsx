@@ -29,7 +29,7 @@ interface WorkerCalendarProps {
    fetchAndUpdateWorkers: () => void;
    triggerOpenModal: boolean;
    resetTrigger: () => void;
-   showNotification: (title: string, message: string, color: string) => void;
+   showNotification: (title: string, message: string | React.ReactNode, color: string) => void;
    selectedDepartments: string[];
    selectedWorkers: string[];
 }
@@ -84,7 +84,20 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
       console.log("Worker Calendar fetching data");
       setError(null);
       try {
-         const currentYearHolidays = await fetchHolidays(year);
+         const currentYearHolidays = await fetchHolidays(year);      
+         if (currentYearHolidays.length === 0) {
+            showNotification(
+               "AVISO",
+               <>
+                  Dados de feriados não puderam ser carregados.
+                  <br />Podem ocorrer problemas a criar e editar ausências - por favor tente mais tarde.<br />
+                  <hr padding-y={'md'} />
+                  Pode verificar o estado da API aqui: <a href="https://openpotato.github.io/uptime/history/open-holidays-api" target="_blank" rel="noopener noreferrer">open-holidays-api/uptime</a>.
+                  <br />Ou aqui: <a href="https://openpotato.github.io/uptime/" target="_blank" rel="noopener noreferrer">openpotato.github.io</a>.
+               </>,
+               "yellow"
+            );
+         }
          const combinedEvents = [
             ...(workerEvents || []),
             ...(currentYearHolidays || [])
@@ -95,7 +108,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
          console.error('Error fetching events:', error);
          setError('Ocorreu um problema ao carregar dados. Por favor tente mais tarde.');
       }
-   }, [workerEvents]);
+   }, [workerEvents, showNotification]);
 
 
 

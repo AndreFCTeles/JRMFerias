@@ -9,6 +9,9 @@ const fetchHolidays = async (year: number): Promise<ProcessedHolidayEvent[]> => 
       const holidaysResponse = await fetch(`${PUBLIC_HOLIDAYS_URL}?countryIsoCode=PT&languageIsoCode=PT&validFrom=${validFrom}&validTo=${validTo}&subdivisionCode=PT-AV-AV`);
       console.log(`https://openholidaysapi.org/PublicHolidays?countryIsoCode=PT&languageIsoCode=PT&validFrom=${validFrom}&validTo=${validTo}&subdivisionCode=PT-AV-AV`)
       console.log(holidaysResponse);
+      if (!holidaysResponse.ok) {
+         throw new Error('Failed to fetch holidays: API service is unavailable.');
+      }
       const holidaysData = await holidaysResponse.json();      
       const processedHolidayEvents = holidaysData.map((holiday: HolidayAPIEvent) => ({
          id: holiday.id,
@@ -26,6 +29,7 @@ const fetchHolidays = async (year: number): Promise<ProcessedHolidayEvent[]> => 
       return processedHolidayEvents;
    } catch (error) { 
       console.error("Error fetching holiday events:", error); 
+      // throw error; // Propagate error to the calling function
       return [];
    }
 };
