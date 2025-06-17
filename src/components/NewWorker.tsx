@@ -88,9 +88,12 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
       try {
          let message = '';
          if (currentWorker) {
+            console.log(currentWorker.id);
+            console.log(values);
             await updateWorker(currentWorker.id, values);
             message = 'Colaborador atualizado com sucesso';
-         } else {            
+         } else {   
+            console.log(values);         
             await newWorker(values);
             message = 'Novo colaborador adicionado com sucesso';
          }
@@ -98,6 +101,7 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
          form.reset();
          showNotification("Sucesso!", message, "green");
          onClose();
+         
       } catch (error) {
          console.error("Erro na operação de colaborador:", error);
          showNotification("Erro", `Erro ao ${currentWorker ? 'atualizar' : 'adicionar'} colaborador.`, "red");
@@ -121,17 +125,16 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
             />
 
             <Combobox
-            withinPortal={false}
             store={combobox}
+            withinPortal={false}
             onOptionSubmit={(val) => {
                if (val === '$create') {
-                  const newDepartment = search;
-                  form.setFieldValue('dep', newDepartment);
-                  setSearch(newDepartment);
+                  form.setFieldValue('dep', search);
                } 
-               else { form.setFieldValue('dep', val); }
+               else { 
+                  form.setFieldValue('dep', val);
+               }
                combobox.closeDropdown();
-               setSearch(val);
             }}
             >
                <Combobox.Target>
