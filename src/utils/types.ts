@@ -3,6 +3,10 @@ export interface Credential {
    username: string;
    password: string;
 }
+export interface CredentialsResponse {
+   credentials: Credential[];
+}
+
 
 // ABSENCE
 export interface AbsenceBase {
@@ -29,12 +33,12 @@ export interface UpdateAbsenceData extends AbsenceBase {
    id?: string;
 }
 
+
 // CALENDAR
 export interface EventText {
    language: string;
    text: string;
 }
-
 export interface JRMWorkerData {
    id: string;
    title: string;
@@ -46,7 +50,6 @@ export interface JRMWorkerData {
    compH?: number;
    lunchH?: number;
 }
-
 export interface CalendarEvent {
    id: string;
    workerId?: string;
@@ -64,7 +67,6 @@ export interface CalendarEvent {
    absTime?: number;
    lunch?: boolean;
 }
-
 export interface HolidayAPIEvent {
    id: string;
    startDate: string;
@@ -75,7 +77,6 @@ export interface HolidayAPIEvent {
    nationwide?: boolean;
    title?: string;
 }
-
 export interface ProcessedHolidayEvent {
    id: string;
    title: string;
@@ -87,11 +88,6 @@ export interface ProcessedHolidayEvent {
    textColor?: string;
    display: string;
 }
-
 export interface WorkersArray {
    workers: JRMWorkerData[];
-}
-
-export interface CredentialsResponse {
-   credentials: Credential[];
 }
