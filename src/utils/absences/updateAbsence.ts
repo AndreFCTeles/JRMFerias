@@ -1,21 +1,11 @@
 import dayjs from 'dayjs';
 import { calculateBusinessDays, calculateAbsenceHours, generateAbsenceId } from "../generalUtils";
-import { JRMWorkerData } from "../types";
+import { JRMWorkerData, UpdateAbsenceData } from "../types";
 
-interface UpdateAbsenceData {
-   type?: 'vacation' | 'off-day';
-   id?: string;
-   start: Date | string;
-   end?: Date | string;
-   allDay?: boolean;
-   busDays?: number;
-   absTime?: number;
-   lunch?: boolean;
-}
 
 const updateAbsence = async (workers: JRMWorkerData[], eventId: string, updatedData: UpdateAbsenceData) => {
    try {
-      console.log('Received in updateAbsence:', JSON.stringify(updatedData, null, 2));
+      // console.log('Received in updateAbsence:', JSON.stringify(updatedData, null, 2));
       
       // Inferir worker e tipo de evento selecionado através de ID
       const [workerId, typeCode ] = eventId.split('-');
@@ -25,11 +15,13 @@ const updateAbsence = async (workers: JRMWorkerData[], eventId: string, updatedD
       const currentEventType = typeCode === '1' ? 'vacation' : 'off-day';
       const eventTypeHasChanged = currentEventType !== updatedData.type;
 
+      /*
       console.log("-------------------------------------------------------");
       console.log("did event type change?",eventTypeHasChanged);
       console.log("current event type:", currentEventType);
       console.log("type after update: ", updatedData.type);
       console.log("-------------------------------------------------------");
+      */
 
       // Redundante no caso de eventResize e eventDrop, mas necessário na criação de dados
       if (updatedData.type === 'off-day' && !updatedData.allDay) {
@@ -54,11 +46,11 @@ const updateAbsence = async (workers: JRMWorkerData[], eventId: string, updatedD
 
       // Gerar ID se tipo de evento mudar
       if (eventTypeHasChanged) {
-         console.log("as the event type has changed, we generate a new Id");
+         //console.log("as the event type has changed, we generate a new Id");
          updatedData.id = generateAbsenceId(worker, updatedData.type as 'vacation' | 'off-day');
       } else { updatedData.id = eventId; }
-      console.log("updated data: ", updatedData);
-      console.log("^ This is the data that will be sent to the backend.");
+      // console.log("updated data: ", updatedData);
+      // console.log("^ This is the data that will be sent to the backend.");
 
       // Enviar dados para API
       const response = await fetch(`/api/ferias/editferias/${eventId}`, {

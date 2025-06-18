@@ -8,6 +8,7 @@ import ptLocale from '@fullcalendar/core/locales/pt';
 
 // Utils
 import { JRMWorkerData, CalendarEvent, ProcessedHolidayEvent } from '../utils/types';
+import {  isWeekend, getFirstAndLastName } from '../utils/generalUtils'
 import fetchAbsences from '../utils/absences/fetchAbsences';
 import fetchHolidays from '../utils/absences/fetchHolidays';
 import logoImage from '../assets/32logo_electrex.png';
@@ -41,19 +42,6 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
    const workerOptions = useMemo(() => workers.map(worker => ({ value: worker.id, label: worker.title })), [workers]);
 
 
-   // Utils
-   const isWeekend = (date: Date) => {
-      const day = date.getDay();
-      return day === 0 || day === 6; // Sunday = 0, Saturday = 6
-   };
-
-   const getFirstAndLastName = (fullName: string): string => {
-      const nameParts = fullName.split(' ');
-      if (nameParts.length < 2) { return fullName; } // If there is only one part, return the full name
-      const firstName = nameParts[0];
-      const lastName = nameParts[nameParts.length - 1];
-      return `${firstName} ${lastName}`;
-   };
 
 
    // Handlers
@@ -133,7 +121,7 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
                   });
                }
             });
-            console.log("adjustedEvents: ", adjustedEvents)
+            //console.log("adjustedEvents: ", adjustedEvents)
 
             // Atualizar objeto e estado de eventos a apresentar
             const allEvents = [...adjustedEvents, ...holidays];

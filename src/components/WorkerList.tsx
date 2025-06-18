@@ -1,5 +1,5 @@
 // Frameworks
-import React, {useState, useEffect, memo } from "react";
+import React, { useState, useEffect, memo } from "react";
 import { 
    Flex, 
    Text, 
@@ -18,6 +18,7 @@ import {
 import { useContextMenu} from 'mantine-contextmenu';
 // Types
 import { JRMWorkerData } from "../utils/types";
+import { getDayColor, getHourColor } from "../utils/generalUtils";
 
 // Props
 interface WorkerListProps {
@@ -119,19 +120,6 @@ const WorkerList: React.FC<WorkerListProps> = ({
    };
 
 
-   // Utils
-   const getDayColor = (value: number) => {
-      if (value < 5) return 'red';
-      if (value >= 5 && value < 10) return 'orange';
-      if (value >= 10 && value < 15) return 'yellow';
-      return 'green';
-   };
-   const getHourColor = (value: number) => {
-      if (value < 3) return 'green';
-      if (value >= 3 && value < 5) return 'yellow';
-      if (value >= 5 && value < 8) return 'orange';
-      return 'red';
-   };
 
    // Geração dinâmica de elementos da lista
    const accordionItems = Array.from(departmentGroups).map(([department, deptWorkers]) => {      

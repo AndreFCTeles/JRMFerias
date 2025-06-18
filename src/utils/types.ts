@@ -1,23 +1,39 @@
+// AUTHENTICATION
 export interface Credential {
    username: string;
    password: string;
 }
 
-export interface Absence {
-   id: string;
+// ABSENCE
+export interface AbsenceBase {
    start: Date | string;
    end?: Date | string;
-   busDays?: number;
    allDay?: boolean;
+   busDays?: number;
    absTime?: number;
    lunch?: boolean;
 }
+export interface Absence extends AbsenceBase {
+   id: string;
+}
+export interface NewAbsenceRequest {
+   id: string;
+   absence: Absence;
+   type: 'vacation' | 'off-day';
+}
+export interface NewAbsenceData extends AbsenceBase {
+   type: 'vacation' | 'off-day';
+}
+export interface UpdateAbsenceData extends AbsenceBase {
+   type?: 'vacation' | 'off-day';
+   id?: string;
+}
 
+// CALENDAR
 export interface EventText {
    language: string;
    text: string;
 }
-
 
 export interface JRMWorkerData {
    id: string;
@@ -70,12 +86,6 @@ export interface ProcessedHolidayEvent {
    backgroundColor?: string;
    textColor?: string;
    display: string;
-}
-
-export interface NewAbsenceRequest {
-   id: string;
-   absence: Absence;
-   type: 'vacation' | 'off-day';
 }
 
 export interface WorkersArray {

@@ -95,3 +95,32 @@ export const calculateBusinessDays = async (startDate: dayjs.Dayjs, endDate: day
    }
    return count;
 };
+
+
+
+/* --------------------------- */
+/* UI - Lista de colaboradores */
+/* --------------------------- */
+
+// Extrair nomes de worker para UI
+export const getFirstAndLastName = (fullName: string): string => {
+   const nameParts = fullName.split(' ');
+   if (nameParts.length < 2) { return fullName; } // If there is only one part, return the full name
+   const firstName = nameParts[0];
+   const lastName = nameParts[nameParts.length - 1];
+   return `${firstName} ${lastName}`;
+};
+
+// Contabilização dias/horas
+export const getDayColor = (value: number) => {
+   if (value < 5) return 'red';
+   if (value >= 5 && value < 10) return 'orange';
+   if (value >= 10 && value < 15) return 'yellow';
+   return 'green';
+};
+export const getHourColor = (value: number) => {
+   if (value < 3) return 'green';
+   if (value >= 3 && value < 5) return 'yellow';
+   if (value >= 5 && value < 8) return 'orange';
+   return 'red';
+};

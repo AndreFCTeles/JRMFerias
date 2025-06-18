@@ -88,12 +88,12 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
       try {
          let message = '';
          if (currentWorker) {
-            console.log(currentWorker.id);
-            console.log(values);
+            //console.log(currentWorker.id);
+            //console.log(values);
             await updateWorker(currentWorker.id, values);
             message = 'Colaborador atualizado com sucesso';
          } else {   
-            console.log(values);         
+            //console.log(values);         
             await newWorker(values);
             message = 'Novo colaborador adicionado com sucesso';
          }

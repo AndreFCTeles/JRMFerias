@@ -63,14 +63,6 @@ const App: React.FC = () => {
       message: '',
       color: 'green',
    });
-   /*
-   const [notification, setNotification] = useState({
-      visible: false,
-      title: '',
-      message: '',
-      color: 'green',
-   });
-   */
 
    // Notification 
    const showNotification = useCallback((title: string, message: string | React.ReactNode, color: string) => {
@@ -82,6 +74,10 @@ const App: React.FC = () => {
       });
       setTimeout(() => { setNotification((prevState) => ({ ...prevState, visible: false })); }, 5000);
    }, []);
+
+
+
+
 
    // HANDLERS
    // Login
@@ -97,6 +93,7 @@ const App: React.FC = () => {
    const handleLoginClose = () => { 
       setShowLoginModal(false); // IMPORTANTE - Separei close de open por causa de bugs com a tecla Esc
    }
+
    // Worker handlers
    const handleWorkerEdit = (workerId: string) => {
       if (isLoggedIn) {
@@ -116,6 +113,7 @@ const App: React.FC = () => {
          showNotification("Erro", "Erro ao eliminar colaborador", "red");
       }
    };
+
    // Worker Modal handlers
    const handleNewWorkerOpen = () => {
       setCurrentWorker(null);
@@ -125,11 +123,17 @@ const App: React.FC = () => {
       setCurrentWorker(null);
       setShowNewWorkerModal(false);
    };
+
    // UI handlers
    const handleOpenModal = () => { setTriggerOpenModal(true); };
    const resetTrigger = () => { setTriggerOpenModal(false); };
    const handleViewChange = useCallback((newView: 'dayGridMonth' | 'multiMonthYear') => { setView(newView); }, []);
 
+
+
+
+
+   
    // App data fetching
    const fetchAndUpdateWorkers = async () => {
       try {
@@ -142,6 +146,7 @@ const App: React.FC = () => {
          setWorkers(fetchedWorkers);
       } catch (error) { console.error("Erro ao buscar colaboradores", error); }
    };
+
 
    // EFFECTS
    // Inicialização dos dados

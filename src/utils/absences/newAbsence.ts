@@ -1,20 +1,12 @@
-import { NewAbsenceRequest, Absence, JRMWorkerData } from "../types";
+import { NewAbsenceRequest, Absence, NewAbsenceData, JRMWorkerData } from "../types";
 import { processDate, generateAbsenceId } from "../generalUtils";
 
 
 
-interface NewAbsenceData {
-   type: 'vacation' | 'off-day';
-   start: Date | string;
-   end?: Date | string;
-   allDay?: boolean;
-   busDays?: number;
-   absTime?: number;
-   lunch?: boolean;
-}
 
 const newAbsence = async (workers: JRMWorkerData[], selectedWorkerId: string, eventData: NewAbsenceData ) => {
    
+   /*
    console.log(" ");
    console.log("-----------");
    console.log("NEW ABSENCE");
@@ -22,6 +14,8 @@ const newAbsence = async (workers: JRMWorkerData[], selectedWorkerId: string, ev
    
    console.log("Received event data: ", eventData);
    console.log("Selected worker: ", selectedWorkerId);
+   */
+
    try {
       // Encontrar worker através de ID
       const worker = workers.find((worker:JRMWorkerData) => worker.id === selectedWorkerId);
