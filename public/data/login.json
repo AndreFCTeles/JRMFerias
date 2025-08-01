@@ -1,0 +1,12 @@
+{
+   "credentials": [
+      {
+         "username": "telhas",
+         "password": "password1"
+      },
+      {
+         "username": "user2",
+         "password": "password2"
+      }
+   ]
+}

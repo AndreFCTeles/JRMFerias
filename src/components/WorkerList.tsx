@@ -4,18 +4,19 @@ import {
    Flex, 
    Text, 
    Badge, 
-   Title, 
+   //Title, 
    Group, 
    ScrollArea, 
    Tooltip, 
    Modal, 
    Button, 
    Accordion, 
-   Stack, 
+   Typography,
    Grid,
-   Checkbox
+   Checkbox,
+   Container
 } from '@mantine/core';
-import { useContextMenu} from 'mantine-contextmenu';
+import { useContextMenu } from 'mantine-contextmenu';
 // Types
 import { JRMWorkerData } from "../utils/types";
 import { getDayColor, getHourColor } from "../utils/generalUtils";
@@ -49,8 +50,8 @@ const WorkerList: React.FC<WorkerListProps> = ({
 }) => {
    // STATES/VARS
    // UI
-   const { showContextMenu } = useContextMenu();
-   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+   const { showContextMenu } = useContextMenu(); // right-click
+   const [isConfirmOpen, setIsConfirmOpen] = useState(false); // modal
    // Workers
    const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
    const [departmentGroups, setDepartmentGroups] = useState<Map<string, JRMWorkerData[]>>(new Map());
@@ -129,12 +130,13 @@ const WorkerList: React.FC<WorkerListProps> = ({
          const noneSelected = departmentWorkers.every(workerId => !selectedWorkers.includes(workerId));
          return allSelected ? true : noneSelected ? false : 'indeterminate';
       }; 
+      const statsVisibility = !(department==='JRMatos') ? "md" : 0;
 
       return (
          <Accordion.Item 
          key={department} 
          value={department}>
-            <Accordion.Control>
+            <Accordion.Control style={{ borderRadius:0 }}>
                <Grid>
                   <Grid.Col span={2}>
                      <Checkbox
@@ -150,7 +152,7 @@ const WorkerList: React.FC<WorkerListProps> = ({
                   </Grid.Col>
                </Grid>
             </Accordion.Control>
-            <Accordion.Panel px={0}>            
+            <Accordion.Panel px={0} style={{ backgroundColor:"rgba(250, 250, 250, 1)" }}>            
                <ScrollArea 
                h={deptWorkers.length > maxVisibleCards ? maxVisibleHeight : 'auto'}
                w={"100%"}  
@@ -163,13 +165,14 @@ const WorkerList: React.FC<WorkerListProps> = ({
                      const nameParts = fullName.split(' ');
                      const firstName = nameParts[0];
                      const lastName = nameParts[nameParts.length - 1];
-                     const displayName = firstName + (nameParts.length > 1 ? (' ' + lastName) : '');
+                     const shortName = firstName + ' ' + (nameParts.length > 1 ? (' ' + lastName) : '');
+                     // const displayName = worker.displayName;
 
                      return (
                         <Tooltip openDelay={500}
                         key={worker.id}
                         label={isLoggedIn 
-                           ? `Editar ou eliminar ${displayName}` 
+                           ? `Editar ou eliminar ${shortName}` 
                            : 'Clique em "Login" e introduza as suas credenciais para editar informações de colaborador'
                         }
                         position="bottom"
@@ -218,24 +221,27 @@ const WorkerList: React.FC<WorkerListProps> = ({
                               ])
                            }
                            onDoubleClick={() => onWorkerEdit(worker.id)}
-                           style={{borderColor: worker.color}}
-                           >
+                           style={{
+                              borderColor: worker.color, 
+                              backgroundColor:"#FFF" 
+                           }} >
                               {/* Content */}
-                              <Grid w="100%" justify="center" align="center" p={department==='JRMatos'? "md" : 0 } m={0}>   
-                                 <Grid.Col span={{base:12, md:8}} p={"md"}> 
-                                    <Group>
-                                       <Checkbox.Indicator />                          
-                                       <Tooltip openDelay={500} key={worker.id} label={worker.title}>
-                                          <Text truncate="end" fw={600} size="lg" ta="left" style={{lineHeight:"1.2"}}>{`${displayName}`}</Text>
-                                       </Tooltip>
-                                    </Group>
-                                 </Grid.Col>
-
+                              <Container p="md"> {/* <Grid w="100%" justify="center" align="center" p=department==='JRMatos'? "md" : 0  "md" m={0}> */}  
+                                    
+                                 {/* Worker */}
+                                 <Group mb={statsVisibility} preventGrowOverflow={false} wrap="nowrap">
+                                    <Checkbox.Indicator />
+                                    <Tooltip openDelay={500} key={worker.id} label={worker.title}>
+                                       <Text lineClamp={1} component="div" fw={600} size="lg" style={{lineHeight:"1.2"}}>
+                                          <Typography><p>{fullName}</p></Typography>
+                                       </Text>
+                                    </Tooltip>   
+                                 </Group>
+                                 
                                  {/* Absence Stats */}
-                                 <Grid.Col span={{base:12, md:4}} p={"md"}>
-                                    <Stack gap={3} align="center" pr={2} pb={2} justify="center">
-                                       {!(department==='JRMatos') && <>                                    
-                                       <Group preventGrowOverflow={false} wrap="nowrap" justify="center" align="center">
+                                 {!(department==='JRMatos') && <>
+                                    <Group align="center" justify="space-evenly">             
+                                       <Group preventGrowOverflow={false} align="center"> {/* justify="center" */}
                                           <Tooltip
                                           multiline
                                           withArrow
@@ -243,7 +249,7 @@ const WorkerList: React.FC<WorkerListProps> = ({
                                           arrowSize={8}
                                           label="Dias disponíveis para ausência">
                                              <Flex
-                                             gap="xs"
+                                             gap={3} // "xs"
                                              justify="center"
                                              align="center"
                                              direction="row"
@@ -254,7 +260,7 @@ const WorkerList: React.FC<WorkerListProps> = ({
                                              </Flex>
                                           </Tooltip>
                                        </Group>
-                                       <Group preventGrowOverflow={false} wrap="nowrap">
+                                       <Group preventGrowOverflow={true}>
                                           <Tooltip
                                           multiline
                                           withArrow
@@ -262,7 +268,7 @@ const WorkerList: React.FC<WorkerListProps> = ({
                                           arrowSize={8}
                                           label="Horas a compensar">
                                              <Flex
-                                             gap="xs"
+                                             gap={3} // "xs"
                                              justify="center"
                                              align="center"
                                              direction="row"
@@ -273,11 +279,18 @@ const WorkerList: React.FC<WorkerListProps> = ({
                                              </Flex>
                                           </Tooltip>
                                        </Group>
-                                       </>}
-                                    </Stack>
+                                    </Group>
+                                 </>}
+
+                              </Container>
+                                 {/* <Grid.Col span={{base:12}}  w="100%">  p="md" 
+                                 </Grid.Col>*/}
+
+                                 {/* Absence Stats */}
+                                 {/* <Grid.Col span={{base:12, md:4}} p={"md"}>
                                  </Grid.Col>
 
-                              </Grid>
+                              </Grid> */}
                            </Checkbox.Card>
 
                         </Tooltip>
@@ -295,11 +308,14 @@ const WorkerList: React.FC<WorkerListProps> = ({
    // JSX
    return (
       <> 
+         {/*
          <Title 
          py="md" 
          mb="xs" 
          order={3} 
-         style={{ backgroundColor:"#269AFF", color:"#FFF" }}>Lista de Colaboradores</Title>
+         style={{ backgroundColor:"#269AFF", color:"#FFF" }}
+         >Lista de Colaboradores</Title>
+         */}
 
          {/* Worker List */}
          <ScrollArea h={'full'}>
@@ -316,7 +332,7 @@ const WorkerList: React.FC<WorkerListProps> = ({
          <Modal 
          opened={isConfirmOpen} 
          onClose={() => setIsConfirmOpen(false)} 
-         title="Confirmar"              
+         title="Confirmar"
          style={{ left: "0%", position: "absolute" }}>
             <Text ta="center" mt="md">Tem certeza de que deseja eliminar colaborador?</Text>
             <Text ta="center" mt="md">Esta operação não pode ser revertida.</Text>

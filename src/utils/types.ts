@@ -39,9 +39,14 @@ export interface EventText {
    language: string;
    text: string;
 }
+export interface DepartmentData {
+   depName: string;
+   depDefColor: string;
+}
 export interface JRMWorkerData {
    id: string;
    title: string;
+   displayName?: string;
    dep?: string;
    vacations: Absence[];
    offDays: Absence[];

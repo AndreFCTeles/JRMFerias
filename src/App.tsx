@@ -8,6 +8,7 @@ import {
    Drawer, 
    Notification, 
    Tooltip, 
+   Title,
    SegmentedControl, 
    Box, 
    Text, 
@@ -51,6 +52,8 @@ const App: React.FC = () => {
    const [departments, setDepartments] = useState<string[]>([]);
    const [isPrintMode, setIsPrintMode] = useState(false);
    const [currentWorker, setCurrentWorker] = useState<JRMWorkerData | null>(null);
+   // navbar
+   const [navOpened, { toggle: toggleNav }] = useDisclosure(true);
    // notificações
    const [notification, setNotification] = useState<{
       visible: boolean;
@@ -128,7 +131,10 @@ const App: React.FC = () => {
    const handleOpenModal = () => { setTriggerOpenModal(true); };
    const resetTrigger = () => { setTriggerOpenModal(false); };
    const handleViewChange = useCallback((newView: 'dayGridMonth' | 'multiMonthYear') => { setView(newView); }, []);
-
+   const calendarSizeAdjuster = () => {
+      toggleNav(); 
+      fetchAndUpdateWorkers();
+   };
 
 
 
@@ -166,200 +172,240 @@ const App: React.FC = () => {
    return (
       <>
          <AppShell
-         layout='alt'
+         //layout='alt'
          header={{ height: 100 }}
-         navbar={{ width: { sm: 200, md: 300, lg: 400 }, breakpoint: 'sm' }}
-         >
+         navbar={{ 
+            width: { sm: 200, md: 300, lg: 400 }, 
+            breakpoint: 'sm',
+            collapsed: {
+               mobile: !navOpened, 
+               desktop: !navOpened
+            }
+         }} >
 
-         <AppShell.Header py="auto">
-            <Flex
-            ml="25px"
-            h="100%"
-            mih={50}
-            gap="sm"
-            justify="space-between"
-            align="center"
-            direction="row"
-            wrap="wrap"
-            >
+            <AppShell.Header>
 
-               {/* Modal BTNs */}
-               <Box>
-                  <Button onClick={open}>Imprimir</Button>
-                  {isLoggedIn ? (
-                     <>
-                        <Button ml="xs" onClick={handleNewWorkerOpen}>Novo Colaborador</Button>
-                        <Button ml="xs" onClick={handleOpenModal}>Adicionar Ausência</Button>
-                     </>
-                  ) : (
-                     <Button ml="xs" onClick={() => setShowLoginModal(true)}>Login</Button>
-                  )}
-                  <Tooltip
-                  label="Refrescar calendário, caso os dados não sejam atualizados corretamente"
-                  multiline
-                  openDelay={300}
-                  w={200}
+               <Flex h={"100%"} m={0} p={0} align={"center"}>
+                  <Flex
+                  className='headerTitle'
+                  gap={0}
+                  py="md"
+                  h="100%"
+                  align="center"
+                  justify="center"
+                  w={{ sm: 200, md: 300, lg: 400 }}
+                  miw={{ sm: 200, md: 300, lg: 400 }}
+                  onClick={calendarSizeAdjuster}
+                  direction="column"
+                  wrap="nowrap"
                   >
-                     <Button
-                     variant="light"
-                     ml="50px"
-                     style={{ backgroundColor: "#FFF" }}
-                     onClick={fetchAndUpdateWorkers}
-                     >Refrescar Calendário</Button>
-                  </Tooltip>
-               </Box>
+                     <Title 
+                     order={3} 
+                     h={"90%"}
+                     p={{ sm: 0, md: "md" }} m={0} 
+                     style={{ 
+                        flexGrow: 5
+                     }}
+                     >Lista de Colaboradores</Title>
+                     <Text
+                     pt={0} 
+                     m={0} 
+                     h="10%"
+                     style={{ 
+                        flexGrow: 0
+                     }}>{navOpened?"Esconder":"Mostrar"}</Text>
+                  </Flex>
 
-               {/* View */}
-               <Flex mr="lg" align="center">
-                  <Stack gap={0}>
-                     <Text fw={700}>Vista</Text>
-                     <SegmentedControl
-                     color='blue'
-                     radius="xl"
-                     value={view}
-                     onChange={(value) => handleViewChange(value as 'dayGridMonth' | 'multiMonthYear')}
-                     data={[
-                        { label: 'Mensal', value: 'dayGridMonth' },
-                        { label: 'Anual', value: 'multiMonthYear' }
-                     ]}
-                     />
-                  </Stack>
+                  <Flex
+                  ml="25px"
+                  h="100%"
+                  w="100%"
+                  mih={50}
+                  gap="sm"
+                  justify="space-between"
+                  align="center"
+                  direction="row"
+                  wrap="wrap"
+                  >
+
+                     {/* Modal BTNs */}
+                     <Box>
+                        <Button onClick={open}>Imprimir</Button>
+                        {isLoggedIn ? (
+                           <>
+                              <Button ml="xs" onClick={handleNewWorkerOpen}>Novo Colaborador</Button>
+                              <Button ml="xs" onClick={handleOpenModal}>Adicionar Ausência</Button>
+                           </>
+                        ) : (
+                           <Button ml="xs" onClick={() => setShowLoginModal(true)}>Login</Button>
+                        )}
+                        <Tooltip
+                        label="Refrescar calendário, caso os dados não sejam atualizados corretamente"
+                        multiline
+                        openDelay={300}
+                        w={200}
+                        >
+                           <Button
+                           variant="light"
+                           ml="50px"
+                           style={{ backgroundColor: "#FFF" }}
+                           onClick={fetchAndUpdateWorkers}
+                           >Refrescar Calendário</Button>
+                        </Tooltip>
+                     </Box>
+
+                     {/* View */}
+                     <Flex mr="lg" align="center">
+                        <Stack gap={0}>
+                           <Text fw={700}>Vista</Text>
+                           <SegmentedControl
+                           color='blue'
+                           radius="xl"
+                           value={view}
+                           onChange={(value) => handleViewChange(value as 'dayGridMonth' | 'multiMonthYear')}
+                           data={[
+                              { label: 'Mensal', value: 'dayGridMonth' },
+                              { label: 'Anual', value: 'multiMonthYear' }
+                           ]}
+                           />
+                        </Stack>
+                     </Flex>
+                  </Flex>
                </Flex>
-            </Flex>
-         </AppShell.Header>
+            </AppShell.Header>
 
-         {/* WorkerList */}
-         <AppShell.Navbar>
-            <WorkerList
-            workers={workers}
-            onWorkerEdit={handleWorkerEdit}
-            onWorkerDelete={handleWorkerDelete}
-            isLoggedIn={isLoggedIn}
-            showNotification={showNotification}
-
-            selectedDepartments={selectedDepartments}
-            setSelectedDepartments={setSelectedDepartments}
-            selectedWorkers={selectedWorkers}
-            setSelectedWorkers={setSelectedWorkers}
-            />
-         </AppShell.Navbar>
-
-         <AppShell.Main>
-            {/* Notifications */}{/*notification.message*/}
-            {notification.visible && (
-               <Notification
-               withBorder
-               color={notification.color}
-               title={notification.title}
-               style={{ 
-                  position:"absolute", 
-                  width: "70vw", 
-                  zIndex: 199,
-                  transition: "all 2s, ease-in-out 2s"
-               }}
-               onClose={
-                  () => setNotification((prevState) => ({ ...prevState, visible: false }))
-               }>
-                  {typeof notification.message === "string" ? (
-                     <Text>{notification.message}</Text>
-                  ) : (notification.message)}
-               </Notification> 
-            )}
-
-            {/* Login */}
-            <Modal
-            opened={showLoginModal}
-            onClose={() => setShowLoginModal(false)}
-            title="Login"
-            centered
-            withCloseButton={true}
-            closeOnClickOutside={false}
-            className='formModal'
-            overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}            
-            style={{ left: "0%", position: "absolute" }} >
-               <LoginModal 
-               onLoginSuccess={handleLoginSuccess} 
-               onClose={handleLoginClose}
-               />
-            </Modal>
-
-            {/* NewWorker */}
-            <Modal
-            opened={showNewWorkerModal}
-            onClose={handleNewWorkerClose}
-            title={currentWorker ? "Editar Colaborador" : "Novo Colaborador"}
-            centered
-            withCloseButton={true}
-            closeOnClickOutside={false}
-            className='formModal'
-            overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}               
-            style={{ left: "0%", position: "absolute" }} >                  
-               <WorkerModal 
-               onClose={handleNewWorkerClose} 
-               onUpdateWorkers={fetchAndUpdateWorkers}
-               currentWorker={currentWorker} 
-               departments={departments}
-               showNotification={showNotification} />
-            </Modal>
-
-            {/* Calendar */}          
-            <ScrollArea
-            style={{ height: 'calc(100% - 50px)' }} 
-            type="auto">
-               <WorkerCalendar
-               key={isLoggedIn ? "logged-in" : "not-logged"}
+            {/* WorkerList */}
+            <AppShell.Navbar>
+               <WorkerList
                workers={workers}
-               workerEvents={calendarEvents}
+               onWorkerEdit={handleWorkerEdit}
+               onWorkerDelete={handleWorkerDelete}
                isLoggedIn={isLoggedIn}
-               view={view}
                showNotification={showNotification}
-               fetchAndUpdateWorkers={fetchAndUpdateWorkers}
-               triggerOpenModal={triggerOpenModal} 
-               resetTrigger={resetTrigger}
 
                selectedDepartments={selectedDepartments}
+               setSelectedDepartments={setSelectedDepartments}
                selectedWorkers={selectedWorkers}
+               setSelectedWorkers={setSelectedWorkers}
                />
-            </ScrollArea>
-         </AppShell.Main>
+            </AppShell.Navbar>
 
-         {/* Print */}
-         <Drawer.Root
-         radius="md"
-         offset={isPrintMode ? 0 : "0.5vw"}
-         opened={opened}
-         onClose={close}
-         left={0}
-         top={0}
-         size={isPrintMode ? "100vw" : "99vw"}
-         style={{ position: "absolute" }}
-         >
-            <Drawer.Overlay />
-            <Drawer.Content style={{
-               display: 'flex',
-               flexDirection: 'column',
-               height: isPrintMode ? "100vw" : '98vh',
-               width: isPrintMode ? "100vw" : "99vw"
-            }}>
-               <Drawer.Header style={{
-                  display: isPrintMode ? 'none' : 'flex',
-                  backgroundColor: '#269AFF',
-                  color: '#FFF'
-               }}>
-                  {!isPrintMode && ( <>
-                     <Drawer.Title fw={700}>Imprimir</Drawer.Title>
-                     <Drawer.CloseButton color='white' />
-                  </> )}
-               </Drawer.Header>
-               <Drawer.Body style={{ flex: 1 }} h="100%">
-                  <PrintCalendar 
-                  isPrintMode={isPrintMode} 
-                  setIsPrintMode={setIsPrintMode} 
-                  propWorkers={workers} 
+            <AppShell.Main>
+               {/* Notifications */}{/*notification.message*/}
+               {notification.visible && (
+                  <Notification
+                  withBorder
+                  color={notification.color}
+                  title={notification.title}
+                  style={{ 
+                     position:"absolute", 
+                     width: "70vw", 
+                     zIndex: 199,
+                     transition: "all 2s, ease-in-out 2s"
+                  }}
+                  onClose={
+                     () => setNotification((prevState) => ({ ...prevState, visible: false }))
+                  }>
+                     {typeof notification.message === "string" ? (
+                        <Text>{notification.message}</Text>
+                     ) : (notification.message)}
+                  </Notification> 
+               )}
+
+               {/* Login */}
+               <Modal
+               opened={showLoginModal}
+               onClose={() => setShowLoginModal(false)}
+               title="Login"
+               centered
+               withCloseButton={true}
+               closeOnClickOutside={false}
+               className='formModal'
+               overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}            
+               style={{ left: "0%", position: "absolute" }} >
+                  <LoginModal 
+                  onLoginSuccess={handleLoginSuccess} 
+                  onClose={handleLoginClose}
                   />
-               </Drawer.Body>
-            </Drawer.Content>
-         </Drawer.Root>
+               </Modal>
+
+               {/* NewWorker */}
+               <Modal
+               opened={showNewWorkerModal}
+               onClose={handleNewWorkerClose}
+               title={currentWorker ? "Editar Colaborador" : "Novo Colaborador"}
+               centered
+               withCloseButton={true}
+               closeOnClickOutside={false}
+               className='formModal'
+               overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}               
+               style={{ left: "0%", position: "absolute" }} >                  
+                  <WorkerModal 
+                  onClose={handleNewWorkerClose} 
+                  onUpdateWorkers={fetchAndUpdateWorkers}
+                  currentWorker={currentWorker} 
+                  departments={departments}
+                  showNotification={showNotification} />
+               </Modal>
+
+               {/* Calendar */}          
+               <ScrollArea
+               style={{ height: 'calc(100% - 50px)' }} 
+               type="auto">
+                  <WorkerCalendar
+                  key={isLoggedIn ? "logged-in" : "not-logged"}
+                  workers={workers}
+                  workerEvents={calendarEvents}
+                  isLoggedIn={isLoggedIn}
+                  view={view}
+                  showNotification={showNotification}
+                  fetchAndUpdateWorkers={fetchAndUpdateWorkers}
+                  triggerOpenModal={triggerOpenModal} 
+                  resetTrigger={resetTrigger}
+
+                  selectedDepartments={selectedDepartments}
+                  selectedWorkers={selectedWorkers}
+                  />
+               </ScrollArea>
+            </AppShell.Main>
+
+            {/* Print */}
+            <Drawer.Root
+            radius="md"
+            offset={isPrintMode ? 0 : "0.5vw"}
+            opened={opened}
+            onClose={close}
+            left={0}
+            top={0}
+            size={isPrintMode ? "100vw" : "99vw"}
+            style={{ position: "absolute" }}
+            >
+               <Drawer.Overlay />
+               <Drawer.Content style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  height: isPrintMode ? "100vw" : '98vh',
+                  width: isPrintMode ? "100vw" : "99vw"
+               }}>
+                  <Drawer.Header style={{
+                     display: isPrintMode ? 'none' : 'flex',
+                     backgroundColor: '#269AFF',
+                     color: '#FFF'
+                  }}>
+                     {!isPrintMode && ( <>
+                        <Drawer.Title fw={700}>Imprimir</Drawer.Title>
+                        <Drawer.CloseButton color='white' />
+                     </> )}
+                  </Drawer.Header>
+                  <Drawer.Body style={{ flex: 1 }} h="100%">
+                     <PrintCalendar 
+                     isPrintMode={isPrintMode} 
+                     setIsPrintMode={setIsPrintMode} 
+                     propWorkers={workers} 
+                     />
+                  </Drawer.Body>
+               </Drawer.Content>
+            </Drawer.Root>
 
          </AppShell>
       </>

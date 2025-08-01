@@ -1,6 +1,18 @@
 // Frameworks
 import React, {useState, memo} from 'react';
-import { Text, TextInput, Button, ColorInput, NumberInput, Modal, Group, Combobox, InputBase, useCombobox, Grid } from '@mantine/core';
+import { 
+   Text, 
+   TextInput, 
+   Button, 
+   ColorInput, 
+   NumberInput, 
+   Modal, 
+   Group, 
+   Combobox, 
+   InputBase, 
+   useCombobox, 
+   Grid 
+} from '@mantine/core';
 import { useForm } from '@mantine/form';
 // Utils
 import newWorker from '../utils/workers/newWorker';
@@ -20,7 +32,13 @@ interface WorkerModalProps {
 
 
 // COMPONENT
-const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, showNotification, currentWorker, departments }) => {
+const WorkerModal: React.FC<WorkerModalProps> = ({ 
+   onClose, 
+   onUpdateWorkers, 
+   showNotification, 
+   currentWorker, 
+   departments 
+}) => {
    // STATES/VARS
    // UI
    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -42,6 +60,7 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
    const form = useForm({
       initialValues: {
          title: currentWorker?.title || '',
+         displayName: currentWorker?.displayName || '',
          dep: currentWorker?.dep || '',
          color: currentWorker?.color || '#000000',
          avaDays: currentWorker?.avaDays || 0,
@@ -57,6 +76,7 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
 
 
 
+   
 
    // HANDLERS
    const handleConfirm = async () => {
@@ -118,10 +138,17 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
          <form onSubmit={(e)=>{e.preventDefault();}}>
             <TextInput
             label="Nome do Colaborador:"
-            placeholder="Nome"
+            placeholder="Nome completo"
             mt="md"
             required
             {...form.getInputProps('title')}
+            />
+            <TextInput
+            label="Nome de apresentação:"
+            placeholder="Nome"
+            description="Opcional - p.ex. alcunha"
+            mt="md"
+            {...form.getInputProps('displayName')}
             />
 
             <Combobox
@@ -130,9 +157,11 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
             onOptionSubmit={(val) => {
                if (val === '$create') {
                   form.setFieldValue('dep', search);
+                  setSearch(search);
                } 
                else { 
                   form.setFieldValue('dep', val);
+                  setSearch(val);
                }
                combobox.closeDropdown();
             }}
@@ -193,7 +222,7 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
                      description="para férias ou ausências"
                      mt="md"
                      defaultValue={0}
-                     allowNegative={false}
+                     allowNegative={true}
                      allowDecimal={false}
                      stepHoldDelay={500}
                      stepHoldInterval={(t) => Math.max(1000 / t ** 2, 25)}
@@ -207,7 +236,7 @@ const WorkerModal: React.FC<WorkerModalProps> = ({ onClose, onUpdateWorkers, sho
                      description="de ausências parciais"
                      mt="md"
                      defaultValue={0}
-                     allowNegative={false}
+                     allowNegative={true}
                      allowDecimal={false}
                      stepHoldDelay={500}
                      stepHoldInterval={(t) => Math.max(1000 / t ** 2, 25)}

@@ -9,7 +9,8 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': 'http://192.168.0.12:8080'
-    }
+    },
+    allowedHosts: ['electrex.local']
   },
   /* /dev */
   plugins: [react()],
