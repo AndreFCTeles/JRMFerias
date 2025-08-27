@@ -1,5 +1,6 @@
 import fetchHolidays from './absences/fetchHolidays';
 import { ProcessedHolidayEvent, JRMWorkerData } from './types';
+//import { DepartmentData, DepColorMap } from './types';
 
 import dayjs from "dayjs";
 import 'dayjs/locale/pt';
@@ -75,6 +76,15 @@ export const processDate = (dateVal:Date|string, inc?:number) => {
    return processed
 };
 
+// Parse de horas
+export const toHours = (s: string) => {
+   // Supports "1:30" → 1.5, "1" → 1, "0.5" → 0.5
+   const [h, m] = s.split(':').map(Number);
+   if (Number.isFinite(h) && Number.isFinite(m)) return h + m / 60;
+   const f = Number(s);
+   return Number.isFinite(f) ? f : 0;
+};
+
 // Ajuste de ausência com base nos dias úteis
 export const adjustAbsencePeriod = (start: dayjs.Dayjs, end: dayjs.Dayjs, holidays: ProcessedHolidayEvent[]): { adjustedStart: dayjs.Dayjs, adjustedEnd: dayjs.Dayjs } => {
    let adjustedStart = start;
@@ -103,12 +113,19 @@ export const calculateBusinessDays = async (startDate: dayjs.Dayjs, endDate: day
 /* --------------------------- */
 
 // Extrair nomes de worker para UI
+/*
 export const getFirstAndLastName = (fullName: string): string => {
    const nameParts = fullName.split(' ');
    if (nameParts.length < 2) { return fullName; } // If there is only one part, return the full name
    const firstName = nameParts[0];
    const lastName = nameParts[nameParts.length - 1];
    return `${firstName} ${lastName}`;
+};
+*/
+export const getFirstAndLastName = (fullName: string): string => {
+   const parts = fullName.trim().split(/\s+/);
+   if (parts.length < 2) return fullName.trim();
+   return `${parts[0]} ${parts[parts.length - 1]}`;
 };
 
 // Contabilização dias/horas

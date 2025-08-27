@@ -25,7 +25,7 @@ const fetchHolidays = async (year: number): Promise<ProcessedHolidayEvent[]> => 
          display: 'background',
          allDay: true
       }));
-      console.log(holidaysData)
+      //console.log(holidaysData)
       return processedHolidayEvents;
    } catch (error) { 
       console.error("Error fetching holiday events:", error); 

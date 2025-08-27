@@ -1,7 +1,26 @@
 // Frameworks
-import React, { useEffect, useRef, useState, memo } from 'react';
+import React, { 
+   useEffect, 
+   useRef, 
+   useState, 
+   //useMemo, 
+   memo 
+} from 'react';
 import { DatePickerInput, DatesProvider, TimeInput  } from '@mantine/dates';
-import { Button, SegmentedControl, Select, ActionIcon, Text, Flex, rem, Group, Modal } from '@mantine/core';
+import { 
+   Button,
+   Group,
+   Modal,
+   SegmentedControl,
+   Select,
+   //Switch,
+   Text,
+   //TextInput,
+   ActionIcon,
+   //Grid,
+   Flex,
+   rem
+} from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconCalendar, IconClock } from '@tabler/icons-react';
 import dayjs from 'dayjs';
@@ -11,6 +30,9 @@ import { CalendarEvent, JRMWorkerData } from '../utils/types';
 import newAbsence from '../utils/absences/newAbsence';
 import updateAbsence from '../utils/absences/updateAbsence';
 import { 
+   //processDate,
+   //toHours,
+   //getFirstAndLastName,
    calculateBusinessDays, 
    calculateAbsenceHours,
    getWorkerFromId,
@@ -114,6 +136,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
    }, [currentEvent, workers, form]);
 
    // Auto-validação de datas - manter start menor ou igual a end
+   /*
    useEffect(() => {
       if (form.values.startDate > form.values.endDate || form.values.vacationType === 'off-day') {
          form.setFieldValue('endDate', form.values.startDate);
@@ -121,6 +144,56 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
          form.setFieldValue('startDate', form.values.endDate);         
       }
    }, [form.values.startDate, form]);
+   */
+   /*
+   useEffect(() => {
+      const { startDate, endDate, vacationType } = form.values;
+
+      // Off-day: keep endDate === startDate, but only set if different
+      if (vacationType === 'off-day') {
+         if (endDate !== startDate) { form.setFieldValue('endDate', startDate); }
+         return;
+      }
+
+      // Vacations: enforce start <= end, but only set when needed
+      if (dayjs(startDate).isAfter(dayjs(endDate))) {
+         form.setFieldValue('endDate', startDate);
+      } else if (dayjs(endDate).isBefore(dayjs(startDate))) {
+         form.setFieldValue('startDate', endDate);
+      }
+   }, [
+      form.values.startDate,
+      form.values.endDate,
+      form.values.vacationType
+   ]);
+   */
+   useEffect(() => {
+      const { startDate, endDate, vacationType } = form.values;
+
+      // Normalize to day precision
+      const s = dayjs(startDate);
+      const e = dayjs(endDate);
+
+      if (vacationType === 'off-day') {
+         // For off-day, keep end = start, but only if different by day value
+         if (!e.isSame(s, 'day')) {
+            form.setFieldValue('endDate', startDate);
+         }
+         return;
+      }
+
+      // For vacations: enforce start <= end (day precision), only when needed
+      if (s.isAfter(e, 'day')) {
+         form.setFieldValue('endDate', startDate);
+      } else if (e.isBefore(s, 'day')) {
+         form.setFieldValue('startDate', endDate);
+      }
+   }, [
+      form.values.startDate,
+      form.values.endDate,
+      form.values.vacationType
+   ]);
+
 
 
 
@@ -161,10 +234,11 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
       // Converter strings de SegmentedControl para booleans
       const allDay = values.allDay === 'true';
       const lunch = values.lunch === 'true';
-      /*
+
+      {/*
       console.log("allDay:",allDay);
       console.log("lunch:",lunch);
-      */
+      */}
 
       // Processamento de dados consoante tipo de ausência
 
@@ -200,6 +274,9 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
       if (lunch && !allDay) { 
          //console.log("Partial absence includes lunch...")
          absTime = Math.max(absTime - parseFloat(values.lunchH), 0); 
+         //const lunchHours = values.lunchH === '1:30' ? 1.5 : Number(values.lunchH) || 0;
+         //absTime = Math.max(absTime - lunchHours, 0);
+
          /*
          console.log("Total absTime:", absTime);
          console.log("----------------------------------------");
@@ -221,7 +298,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
             lunch: values.vacationType === 'off-day' ? lunch : false
          };
 
-         /*
+         {/*
          console.log(" ");
          console.log("----------------------------------------");
          console.log("SUBMITTING NEW ABSENCE FROM ABSENCEMODAL");
@@ -235,12 +312,12 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
          console.log('selectedWorker, stringified:', JSON.stringify(selectedWorker, null, 2));
          console.log("----------------------------------------");
          console.log("eventData before 'trying' to submit: ", eventData);
-         */
+         */}
 
          // Submissão
          try {    
 
-            /*      
+            {/*      
             console.log('Data to submit:');
             console.log(eventData);
             console.log('Data to submit (stringified):', JSON.stringify(eventData, null, 2));
@@ -251,7 +328,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
             console.log('endDateTime',endDateTime);
             console.log("----------------------------------------");
             console.log("Now submitting data...")
-            */
+            */}
 
             if (currentEvent) {
                //console.log('Event being updated:', currentEvent);
@@ -327,7 +404,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
                valueFormat='DD MMMM YYYY'
                leftSection={calIcon}
                leftSectionPointerEvents="none"
-               clearable
+               //clearable
                required
                />
             </DatesProvider>
@@ -342,7 +419,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
                   valueFormat='DD MMMM YYYY'
                   leftSection={calIcon}
                   leftSectionPointerEvents="none"
-                  clearable
+                  //clearable
                   required
                   />
                </DatesProvider>
@@ -446,7 +523,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
                                  {...form.getInputProps('lunchH')}
                                  data={[
                                     { label: '1h', value: '1' },
-                                    { label: '1:30', value: '1:30' },
+                                    { label: '1:30', value: '1.5' },
                                  ]} />   
                               </Flex>  
                            )}    

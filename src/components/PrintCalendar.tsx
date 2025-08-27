@@ -5,6 +5,8 @@ import { YearPickerInput } from '@mantine/dates';
 import FullCalendar from '@fullcalendar/react';
 import multiMonthPlugin from '@fullcalendar/multimonth';
 import ptLocale from '@fullcalendar/core/locales/pt';
+import dayjs from 'dayjs';
+
 
 // Utils
 import { JRMWorkerData, CalendarEvent, ProcessedHolidayEvent } from '../utils/types';
@@ -32,7 +34,7 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
    // Funcionalidade
    const [error, setError] = useState<string | null>(null);
    // Eventos/calendário
-   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+   const [selectedYear, setSelectedYear] = useState<number>(dayjs().year());
    const [events, setEvents] = useState<CalendarEvent[]>([]);
    const calendarRef = useRef(null);
    // Colaboradores
@@ -46,7 +48,7 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
 
    // Handlers
    const handleDatesSet = (dateInfo: DateInfo) => {
-      const newYear = dateInfo.start.getFullYear();
+      const newYear = dayjs(dateInfo.start).year();
       setSelectedYear(newYear);
    };
 
@@ -91,21 +93,27 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
             // Ajustar eventos - workaround para mudança de display:block para display:background
             const adjustedEvents: CalendarEvent[] = [];
             filteredAbsences.forEach(absEvent => {
-               const start = new Date(absEvent.start).getTime();
-               const end = new Date(absEvent.end).getTime();
+               //const start = new Date(absEvent.start).getTime();
+               //const end = new Date(absEvent.end).getTime();
+               const start = dayjs(absEvent.start);
+               const end = dayjs(absEvent.end);
 
                // Calcular dias entre start e end
-               const diffTime = Math.abs(end - start);
-               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+               const diffDays = end.diff(start, 'day'); // implementação de dayjs
+               //const diffTime = Math.abs(end - start);
+               //const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
                // Dividir evento pelos dias
                if (diffDays > 0) {
                   for (let i = 0; i <= diffDays; i++) {
-                     const newStart = new Date(start + (i * 1000 * 60 * 60 * 24));
+                     //const newStart = new Date(start + (i * 1000 * 60 * 60 * 24));
+                     const newStart = start.add(i, 'day');
                      adjustedEvents.push({
                         ...absEvent,
-                        start: newStart.toISOString().split('T')[0],
-                        end: newStart.toISOString().split('T')[0],
+                        start: newStart.format('YYYY-MM-DD'),
+                        end: newStart.format('YYYY-MM-DD'),
+                        //start: newStart.toISOString().split('T')[0],
+                        //end: newStart.toISOString().split('T')[0],
                         id: `${absEvent.eventId}-${i}`,
                         display: 'background',
                         allDay: true
@@ -125,7 +133,7 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
 
             // Atualizar objeto e estado de eventos a apresentar
             const allEvents = [...adjustedEvents, ...holidays];
-            console.log("allEvents: ", allEvents);
+            //console.log("allEvents: ", allEvents);
 
             setEvents(allEvents);
          } catch (error) {
@@ -162,7 +170,14 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
             <Container fluid h={50} py={"1%"} mt={"1%"}>
                <Group justify="space-between" grow>
                   <Group pl={"sm"} gap={0}>
-                     <Image src={logoImage} pr={0} mr={0} alt='' />
+                     <Image 
+                     src={logoImage}
+                     h={32}
+                     w={"auto"}
+                     fit="contain"
+                     pr={0} 
+                     mr={0} 
+                     alt='' />
                   </Group>
                   <Title order={3} style={{textAlign: "center"}}>Janeiro - Dezembro de {selectedYear}</Title>
                   <Title order={3} style={{textAlign: "center"}}>{getFirstAndLastName(selectedWorkerName)}</Title>
@@ -176,8 +191,8 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
                      <YearPickerInput
                      label="Data a imprimir:"
                      placeholder="data"
-                     value={new Date(selectedYear, 0)}
-                     onChange={(date) => setSelectedYear(date ? date.getFullYear() : new Date().getFullYear())}
+                     value={dayjs().year(selectedYear).toDate()}
+                     onChange={(date) => setSelectedYear(date ? dayjs(date).year() : dayjs().year())}
                      clearable
                      />
                      <Select
@@ -207,7 +222,7 @@ const PrintCalendar: React.FC<PrintCalendarProps> = ({isPrintMode, setIsPrintMod
                   position:"absolute",
                   display: 'block',
                   margin: 'auto',
-                  height: '100%',
+                  height: '98%',
                   width: '98%',
                   breakAfter: 'always',
                   msOverflowStyle: 'none',

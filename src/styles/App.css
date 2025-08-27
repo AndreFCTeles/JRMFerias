@@ -155,3 +155,29 @@
 .headerTitle:hover {
   background-color: #1c7ed6;
 }
+
+
+
+
+/* WorkerList hover shenanigans */
+.dephover {
+  display: inline-block;
+  position: relative;
+}
+
+.dephover::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  transform: scaleX(0);
+  height: 3px;
+  bottom: 0;
+  left: 0;
+  background-color: var(--hover-color);
+  transition: transform 0.25s ease-out;
+  transform-origin: bottom left;
+}
+
+.depcont:hover .dephover::after {
+  transform: scaleX(1);
+}

@@ -7,6 +7,12 @@ export interface CredentialsResponse {
    credentials: Credential[];
 }
 
+// WORKER/DEP CHECKBOXES
+export type Selections = { 
+   workers: string[]; 
+   departments: string[] 
+};
+
 
 // ABSENCE
 export interface AbsenceBase {
@@ -20,11 +26,6 @@ export interface AbsenceBase {
 export interface Absence extends AbsenceBase {
    id: string;
 }
-export interface NewAbsenceRequest {
-   id: string;
-   absence: Absence;
-   type: 'vacation' | 'off-day';
-}
 export interface NewAbsenceData extends AbsenceBase {
    type: 'vacation' | 'off-day';
 }
@@ -32,28 +33,41 @@ export interface UpdateAbsenceData extends AbsenceBase {
    type?: 'vacation' | 'off-day';
    id?: string;
 }
+export interface NewAbsenceRequest {
+   id: string;
+   absence: Absence;
+   type: 'vacation' | 'off-day';
+}
 
 
-// CALENDAR
-export interface EventText {
-   language: string;
-   text: string;
-}
-export interface DepartmentData {
-   depName: string;
-   depDefColor: string;
-}
+// WORKERS
 export interface JRMWorkerData {
    id: string;
    title: string;
    displayName?: string;
-   dep?: string;
+   dep: string;
    vacations: Absence[];
    offDays: Absence[];
    color: string;
    avaDays: number;
    compH?: number;
    lunchH?: number;
+}
+export interface WorkersArray {
+   workers: JRMWorkerData[];
+}
+// DEPARTMENTS
+export interface DepartmentData {
+   depName: string;
+   depKey: string;
+   depDefColor: string;
+}
+
+
+// CALENDAR DATA
+export interface EventText {
+   language: string;
+   text: string;
 }
 export interface CalendarEvent {
    id: string;
@@ -92,7 +106,4 @@ export interface ProcessedHolidayEvent {
    backgroundColor?: string;
    textColor?: string;
    display: string;
-}
-export interface WorkersArray {
-   workers: JRMWorkerData[];
 }

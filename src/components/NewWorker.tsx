@@ -1,5 +1,5 @@
 // Frameworks
-import React, {useState, memo} from 'react';
+import React, {useState, useMemo, memo} from 'react';
 import { 
    Text, 
    TextInput, 
@@ -17,7 +17,7 @@ import { useForm } from '@mantine/form';
 // Utils
 import newWorker from '../utils/workers/newWorker';
 import updateWorker from '../utils/workers/updateWorkers';
-import { JRMWorkerData } from '../utils/types';
+import { DepartmentData, JRMWorkerData } from '../utils/types';
 
 // Props
 interface WorkerModalProps {
@@ -25,7 +25,8 @@ interface WorkerModalProps {
    onUpdateWorkers: () => Promise<void>;
    showNotification: (title: string, message: string, color: string) => void;
    currentWorker: JRMWorkerData | null;
-   departments: string[];
+   departments: DepartmentData[];
+   depCounts?: Map<string, number>; 
 }
 
 
@@ -37,25 +38,49 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
    onUpdateWorkers, 
    showNotification, 
    currentWorker, 
-   departments 
+   departments,
+   depCounts
 }) => {
    // STATES/VARS
    // UI
+   //const [confirmOpen, setConfirmOpen] = useState(false);
+   //const [confirmKind, setConfirmKind] = useState<'submit' | 'cancel' | ''>('');
    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
    const [actionType, setActionType] = useState<'submit' | 'cancel' | ''>('');
-   const [search, setSearch] = useState(currentWorker?.dep || '');
-   // WorkerName Combobox
-   const combobox = useCombobox({ onDropdownClose: () => combobox.resetSelectedOption() });
-   const exactOptionMatch = departments.some((item) => item === search);
-   const filteredOptions = exactOptionMatch
-      ? departments
-      : departments.filter((item) => item.toLowerCase().includes(search.toLowerCase().trim()));
+   const [confirmMessage, setConfirmMessage] = useState<string>('');
+   //const [colorTouched, setColorTouched] = useState(false); // --------------------------------- Verificar se user mudou cor (para mudança de dep não dar override)
+   // DepartmentName Combobox
+   const combobox = useCombobox({ onDropdownClose: () => combobox.resetSelectedOption() }); // --- Previne loop de re-seleção de departamento
+   const [search, setSearch] = useState(currentWorker?.dep || ''); // ---------------------------- Estado que gere procura de departamento 
+   const depNames = useMemo(() => departments.map((d) => d.depName), [departments]); // ---------- Inicialização dos nomes de departamento
+   const depColorMap = useMemo( // --------------------------------------------------------------- Inicialização das cores de departamento
+      () => Object.fromEntries(departments.map((d) => [d.depName, d.depDefColor])),
+      [departments]
+   );
+   const exactOptionMatch = useMemo(
+      () => depNames.some((n) => n.toLowerCase() === search.toLowerCase().trim()),
+      [depNames, search]
+   );
+   const filteredOptions = useMemo(
+      () =>
+         exactOptionMatch
+         ? depNames
+         : depNames.filter((n) => n.toLowerCase().includes(search.toLowerCase().trim())),
+      [depNames, search, exactOptionMatch]
+   );
+   /*
    const options = filteredOptions.map((item) => (
       <Combobox.Option value={item} key={item}>
          {item}
       </Combobox.Option>
    ));
-   
+   */
+   // const exactOptionMatch = departments.some((item) => item === search);
+   /*
+   const filteredOptions = exactOptionMatch
+      ? departments
+      : departments.filter((item) => item.toLowerCase().includes(search.toLowerCase().trim()));
+   */
    // Form values init
    const form = useForm({
       initialValues: {
@@ -76,26 +101,72 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
 
 
 
+
+
    
 
-   // HANDLERS
+   // HANDLERS   
+   const openConfirm = (kind: 'submit' | 'cancel', message: string) => {
+      setActionType(kind);
+      setConfirmMessage(message);
+      setIsConfirmOpen(true);
+   };
    const handleConfirm = async () => {
       if (actionType === 'submit') { await submitForm(); } 
       else if (actionType === 'cancel') { onClose(); }
       setIsConfirmOpen(false);
    };
+
+   /*
    const handleActionClick = (action: 'submit' | 'cancel') => {
       setActionType(action);
       if (action === 'submit') {
-         const errors = form.validate();
-         console.log("errors:");
-         console.log(errors);
+         //const errors = form.validate();
+         //console.log("errors:");
+         //console.log(errors);
          if (!currentWorker || form.isDirty()) { setIsConfirmOpen(true); } 
          else { submitForm(); }
       } else {
          if (form.isDirty()) { setIsConfirmOpen(true); } 
          else { onClose(); }
       }
+   };
+   */
+
+   const requestSubmit = () => {
+      // basic validate
+      const { hasErrors } = form.validate();
+      if (hasErrors) return;
+
+      if (currentWorker) {
+         const originalDep = currentWorker.dep;
+         const newDep = form.values.dep;
+         const willOrphan =
+            !!depCounts &&
+            !!originalDep &&
+            originalDep !== newDep &&
+            depCounts.get(originalDep) === 1;
+
+         if (willOrphan) {
+            openConfirm(
+               'submit',
+               `Ao alterar o departamento, "${originalDep}" ficará sem colaboradores e será apagado. Deseja prosseguir?`
+            );
+            return;
+         }
+
+         openConfirm('submit', 'Tem certeza de que deseja atualizar dados do colaborador?');
+         return;
+      }
+
+      // new worker confirm (optional – you already show a confirm; keep consistent)
+      openConfirm('submit', 'Tem certeza de que deseja adicionar o novo colaborador?');
+   };
+   
+   const requestCancel = () => {
+      if (form.isDirty()) {
+         openConfirm('cancel', 'Existem alterações não guardadas. Pretende cancelar?');
+      } else { onClose(); }
    };
 
 
@@ -105,6 +176,56 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
    // SUBMIT
    const submitForm = async () => {
       const values = form.values;
+
+      try {
+         if (currentWorker) {
+            await updateWorker(currentWorker.id, values);
+            showNotification('Sucesso!', 'Colaborador atualizado com sucesso', 'green');
+         } else {
+            await newWorker(values);
+            showNotification('Sucesso!', 'Novo colaborador adicionado com sucesso', 'green');
+         }
+         await onUpdateWorkers(); // refetch workers + departments
+         form.reset();
+         onClose();
+      } catch (err) {
+         console.error(err);
+         showNotification(
+            'Erro',
+            `Erro ao ${currentWorker ? 'atualizar' : 'adicionar'} colaborador.`,
+            'red'
+         );
+      }
+   };
+
+
+   /*
+   const submitForm = async () => {
+      // validation check
+      const { hasErrors } = form.validate();
+      if (hasErrors) return;
+
+      const values = form.values;
+
+      // orphan dep check
+      if (currentWorker) {
+         const originalDep = currentWorker.dep;
+         const newDep = form.values.dep;
+         const willOrphan =
+         !!depCounts &&
+         !!originalDep &&
+         originalDep !== newDep &&
+         depCounts.get(originalDep) === 1;
+
+         if (willOrphan) {
+            openConfirm(
+               'submit',
+               `Ao alterar o departamento, "${originalDep}" ficará sem colaboradores e será apagado. Deseja prosseguir?`
+            );
+            return;
+         }
+      }
+
       try {
          let message = '';
          if (currentWorker) {
@@ -127,6 +248,7 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
          showNotification("Erro", `Erro ao ${currentWorker ? 'atualizar' : 'adicionar'} colaborador.`, "red");
       }
    };
+   */
 
 
 
@@ -160,12 +282,27 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
                   setSearch(search);
                } 
                else { 
+                  // existing department
                   form.setFieldValue('dep', val);
                   setSearch(val);
+
+                  // default color behavior
+                  const newDepColor = depColorMap[val];
+                  if (newDepColor) { form.setFieldValue('color', newDepColor); }
+                  /*
+                  if (!currentWorker) {
+                     if (newDepColor) form.setFieldValue('color', newDepColor);
+                  } else {
+                     const prevDepColor = currentWorker.dep ? depColorMap[currentWorker.dep] : undefined;
+                     const stillDefault = prevDepColor && form.values.color === prevDepColor;
+                     if (newDepColor && stillDefault && !colorTouched) {
+                        form.setFieldValue('color', newDepColor);
+                     }
+                  }
+                  */
                }
                combobox.closeDropdown();
-            }}
-            >
+            }} >
                <Combobox.Target>
                   <InputBase
                   rightSection={<Combobox.Chevron />}
@@ -177,7 +314,10 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
                   required
                   value={search}
                   onClick={() => combobox.openDropdown()}
-                  onFocus={() => combobox.openDropdown()}
+                  onFocus={() => {
+                     combobox.openDropdown();
+                     setSearch(form.values.dep || '');
+                  }}
                   onChange={(event) => {
                      combobox.openDropdown();
                      combobox.updateSelectedOptionIndex();
@@ -191,7 +331,11 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
                </Combobox.Target>
                <Combobox.Dropdown>
                   <Combobox.Options>
-                     {options}
+                     {filteredOptions.map((name) => (
+                        <Combobox.Option value={name} key={name}>
+                           {name}
+                        </Combobox.Option>
+                     ))}
                      {!exactOptionMatch && search.trim().length > 0 && (
                         <Combobox.Option value="$create">+ Criar "{search}"</Combobox.Option>
                      )}
@@ -206,7 +350,7 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
                suffix=" dias"
                description="para férias ou ausências"
                mt="md"
-               defaultValue={0}
+               //defaultValue={0}
                allowNegative={false}
                allowDecimal={false}
                stepHoldDelay={500}
@@ -221,7 +365,7 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
                      suffix=" dias"
                      description="para férias ou ausências"
                      mt="md"
-                     defaultValue={0}
+                     //defaultValue={0}
                      allowNegative={true}
                      allowDecimal={false}
                      stepHoldDelay={500}
@@ -235,7 +379,7 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
                      suffix=" horas"
                      description="de ausências parciais"
                      mt="md"
-                     defaultValue={0}
+                     //defaultValue={0}
                      allowNegative={true}
                      allowDecimal={false}
                      stepHoldDelay={500}
@@ -247,14 +391,23 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
             }
 
             <ColorInput
-               label="Cor associada:"
-               mt="md"
-               {...form.getInputProps('color')}
-            />
+            label="Cor associada:"
+            mt="md"
+            {...form.getInputProps('color')}
+            onChange={(val) => {
+               //if (!colorTouched) setColorTouched(true);
+               form.setFieldValue('color', val);
+            }} />
             
             <Group mt="md" justify='space-between'>
-               <Button onClick={() => handleActionClick('submit')} >{currentWorker ? 'Guardar Alterações' : 'Adicionar Colaborador'}</Button>
-               <Button color="gray" onClick={() => handleActionClick('cancel')} >Cancelar</Button>
+               {/*<Button onClick={() => handleActionClick('submit')} >{currentWorker ? 'Guardar Alterações' : 'Adicionar Colaborador'}</Button>
+               <Button color="gray" onClick={() => handleActionClick('cancel')} >Cancelar</Button>*/}
+               <Button onClick={requestSubmit}>
+                  {currentWorker ? 'Guardar Alterações' : 'Adicionar Colaborador'}
+               </Button>
+               <Button color="gray" onClick={requestCancel}>
+                  Cancelar
+               </Button>
             </Group>
          </form>
 
@@ -267,10 +420,19 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
             left: "0%",
             position: "absolute"
          }} >
-            <Text ta="center" mt="md">Tem certeza de que deseja {actionType === 'submit' ? (currentWorker ? 'atualizar dados' : 'adicionar o novo colaborador') : 'cancelar'}?</Text>
-            <Group mt="md" justify='center'>
+            {/*
+               <Text ta="center" mt="md">Tem certeza de que deseja {actionType === 'submit' ? (currentWorker ? 'atualizar dados' : 'adicionar o novo colaborador') : 'cancelar'}?</Text>
+               <Group mt="md" justify='center'>
+                  <Button onClick={handleConfirm}>Confirmar</Button>
+                  <Button onClick={() => setIsConfirmOpen(false)} color="gray">Cancelar</Button>
+               </Group>
+            */}
+            <Text ta="center" mt="md">{confirmMessage}</Text>
+            <Group mt="md" justify="center">
                <Button onClick={handleConfirm}>Confirmar</Button>
-               <Button onClick={() => setIsConfirmOpen(false)} color="gray">Cancelar</Button>
+               <Button onClick={() => setIsConfirmOpen(false)} color="gray">
+                  Cancelar
+               </Button>
             </Group>
          </Modal>
       </>

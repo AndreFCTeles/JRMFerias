@@ -59,8 +59,8 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
    const [currentEvent, setCurrentEvent] = useState<CalendarEvent | null>(null);
    // 'current' states
-   const [currentYearInView, setCurrentYearInView] = useState(new Date().getFullYear());
-   const [lastMonthInView, setLastMonthInView] = useState(new Date().getMonth());
+   const [currentYearInView, setCurrentYearInView] = useState(dayjs().year());
+   const [lastMonthInView, setLastMonthInView] = useState(dayjs().month());
    // events
    const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
    const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
@@ -103,7 +103,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
             ...(currentYearHolidays || [])
          ];
          setLocalEvents(combinedEvents);
-         console.log(combinedEvents)
+         //console.log(combinedEvents)
       } catch (error) {
          console.error('Error fetching events:', error);
          setError('Ocorreu um problema ao carregar dados. Por favor tente mais tarde.');
@@ -118,9 +118,9 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
       if (calendarRef.current) {
          const calendarApi = calendarRef.current.getApi();
          const currentView = calendarApi.view.type;                  
-         setCurrentYearInView(start.getFullYear());
+         setCurrentYearInView(dayjs(start).year());
          if (currentView === 'dayGridMonth') { 
-            setLastMonthInView(start.getMonth()); 
+            setLastMonthInView(dayjs(start).month()); 
          }
       }
    }, []);   
@@ -296,8 +296,10 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
                buttonText: 'Yearly',
                visibleRange: () => {
                   return {
-                     start: new Date(currentYearInView, 0, 1), // January 1st
-                     end: new Date(currentYearInView, 11, 31)  // December 31st
+                     //start: new Date(currentYearInView, 0, 1), // January 1st
+                     //end: new Date(currentYearInView, 11, 31)  // December 31st
+                     start: dayjs(`${currentYearInView}-1-1`).toDate(),
+                     end: dayjs(`${currentYearInView}-12-31`).toDate()
                   };
                },
                titleFormat: { year: 'numeric' }

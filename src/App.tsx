@@ -1,5 +1,14 @@
+/* |--- IMPORTS ---| */
+
 // Frameworks
-import React, { useState, useEffect, useCallback, memo }   from 'react';
+import React, { 
+   useState, 
+   useEffect, 
+   useCallback, 
+   useRef, 
+   useMemo, 
+   memo 
+} from 'react';
 import { 
    AppShell, 
    Button, 
@@ -17,10 +26,18 @@ import {
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks';
 // Types
-import { JRMWorkerData, Credential, CredentialsResponse, CalendarEvent } from './utils/types';
+import { 
+   JRMWorkerData, 
+   Credential, 
+   CredentialsResponse, 
+   CalendarEvent, 
+   DepartmentData, 
+   Selections
+} from './utils/types';
 // Utils
 import fetchAbsences from './utils/absences/fetchAbsences';
 import fetchWorkers from './utils/workers/fetchWorkers';
+import fetchDepartments from './utils/workers/fetchDepartments';
 import deleteWorker from './utils/workers/deleteWorker';
 // Components
 import LoginModal from './components/LoginModal';
@@ -33,28 +50,39 @@ import WorkerCalendar from './components/WorkerCalendar';
 
 
 
-// COMPONENT
+
+
+
+
+/* |--- COMPONENT ---| */
+
 const App: React.FC = () => {
 
-   // STATES
-   // modals
-   const [showLoginModal, setShowLoginModal] = useState(false);
-   const [showNewWorkerModal, setShowNewWorkerModal] = useState(false);
-   const [opened, { open, close }] = useDisclosure(false);
-   // UI
-   const [view, setView] = useState<'dayGridMonth' | 'multiMonthYear'>('dayGridMonth');
-   const [triggerOpenModal, setTriggerOpenModal] = useState(false);
-   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
-   const [selectedWorkers, setSelectedWorkers] = useState<string[]>([]);
-   const [isLoggedIn, setIsLoggedIn] = useState(false);
-   const [workers, setWorkers] = useState<JRMWorkerData[]>([]);
-   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-   const [departments, setDepartments] = useState<string[]>([]);
-   const [isPrintMode, setIsPrintMode] = useState(false);
-   const [currentWorker, setCurrentWorker] = useState<JRMWorkerData | null>(null);
-   // navbar
-   const [navOpened, { toggle: toggleNav }] = useDisclosure(true);
-   // notificações
+   /* |--- STATES ---| */
+
+   // Comportamento da UI
+   const [showLoginModal, setShowLoginModal] = useState(false); // --------------------------- Mostra modal de login
+   const [isLoggedIn, setIsLoggedIn] = useState(false); // ----------------------------------- Ativa/muda elementos UI após login
+   const [triggerOpenModal, setTriggerOpenModal] = useState(false); // ----------------------- Interação com calendário abre modal de evento
+   const [showNewWorkerModal, setShowNewWorkerModal] = useState(false); // ------------------- Comportamento de modal de colaborador
+   const [opened, { open, close }] = useDisclosure(false); // -------------------------------- Comportamento do modo de impressão
+   const [isPrintMode, setIsPrintMode] = useState(false); // --------------------------------- Esconder elementos de UI para impressão
+   const [navOpened, { toggle: toggleNav }] = useDisclosure(true); // ------------------------ Comportamento da navbar (WorkerList)
+   // Inicialização dos dados da UI
+   const [view, setView] = useState<'dayGridMonth' | 'multiMonthYear'>('dayGridMonth'); // --- Vista do calendário
+   const [workers, setWorkers] = useState<JRMWorkerData[]>([]); // --------------------------- Todos os colaboradores
+   const [currentWorker, setCurrentWorker] = useState<JRMWorkerData | null>(null); // -------- Colaborador a ser editado
+   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]); // ------------- Todas as ausências, férias ou feriados
+   const [departments, setDepartments] = useState<string[]>([]); // -------------------------- Todos os departamentos encontrados nos dados de colaborador
+   const [departmentData, setDepartmentData] = useState<DepartmentData[]>([]); // ------------ Todos os departamentos
+   const filtersInitializedRef = useRef(false); // ------------------------------------------- inicialização de eventos filtrados pela seleção de colaboradores
+   // Contagem de departamentos para validação de formulário (departamentos órfãos)
+   const depCounts = useMemo(() => {
+      const m = new Map<string, number>();
+      for (const d of workers) m.set(d.dep, (m.get(d.dep) ?? 0) + 1); //for (const d of departmentData) m.set(d.depName, (m.get(d.depName) ?? 0) + 1);
+      return m;
+   }, [workers]); //}, [departmentData]);
+   // Sistema de notificações
    const [notification, setNotification] = useState<{
       visible: boolean;
       title: string;
@@ -66,8 +94,6 @@ const App: React.FC = () => {
       message: '',
       color: 'green',
    });
-
-   // Notification 
    const showNotification = useCallback((title: string, message: string | React.ReactNode, color: string) => {
       setNotification({
          visible: true,
@@ -77,12 +103,45 @@ const App: React.FC = () => {
       });
       setTimeout(() => { setNotification((prevState) => ({ ...prevState, visible: false })); }, 5000);
    }, []);
+   // Inicialização de Filtragem/Checkboxes   
+   const [selections, setSelections] = useState<Selections>({ workers: [], departments: [] });
+   const idsForDepartment = useCallback(
+      (depName: string) => workers.filter(w => w.dep === depName).map(w => w.id),
+      [workers]
+   );
+   const onToggleWorker = useCallback((workerId: string, depName: string) => {
+      setSelections(prev => {
+         const isSelected = prev.workers.includes(workerId);
+         const workersNext = isSelected
+            ? prev.workers.filter(id => id !== workerId)
+            : [...prev.workers, workerId];
+         const deptIds = idsForDepartment(depName);
+         const allDeptSelected = deptIds.length > 0 && deptIds.every(id => workersNext.includes(id));
+         const departmentsNext = allDeptSelected
+            ? (prev.departments.includes(depName) ? prev.departments : [...prev.departments, depName])
+            : prev.departments.filter(d => d !== depName);
+         return { workers: workersNext, departments: departmentsNext };
+      });
+   }, [idsForDepartment]);
+   const onToggleDepartment = useCallback((depName: string) => {
+      setSelections(prev => {
+         const deptIds = idsForDepartment(depName);
+         const isDeptSelected = prev.departments.includes(depName);
+         const workersNext = isDeptSelected
+            ? prev.workers.filter(id => !deptIds.includes(id))
+            : Array.from(new Set([...prev.workers, ...deptIds]));
+         const departmentsNext = isDeptSelected
+            ? prev.departments.filter(d => d !== depName)
+            : [...prev.departments, depName];
+         return { workers: workersNext, departments: departmentsNext };
+      });
+   }, [idsForDepartment]);
 
 
 
 
+   /* |--- HANDLERS ---| */
 
-   // HANDLERS
    // Login
    const handleLoginSuccess = async (username: string, password: string) => {
       const response = await fetch('/api/ferias/getloginferias');
@@ -110,7 +169,7 @@ const App: React.FC = () => {
       try {
          await deleteWorker(workerId);
          await fetchAndUpdateWorkers();
-         showNotification("Successo", "Colaborador eliminado com sucesso", "green");
+         showNotification("Sucesso", "Colaborador eliminado com sucesso", "green");
       } catch (error) {
          console.error('Erro ao eliminar colaborador:', error);
          showNotification("Erro", "Erro ao eliminar colaborador", "red");
@@ -140,39 +199,58 @@ const App: React.FC = () => {
 
 
    
-   // App data fetching
+   /* |--- DATA FETCHING ---| */
+   
    const fetchAndUpdateWorkers = async () => {
       try {
          console.log("App fetching data");
-         const fetchedWorkers = await fetchWorkers();
-         const fetchedEvents = await fetchAbsences();
-         const fetchedDepartments = Array.from(new Set(fetchedWorkers.map(worker => worker.dep).filter((dep): dep is string => dep !== undefined))).sort();
-         setDepartments(fetchedDepartments);
-         setCalendarEvents(fetchedEvents);
+
+         const [fetchedWorkers, fetchedEvents, fetchedDeps] = await Promise.all([
+            fetchWorkers(),
+            fetchAbsences(),
+            fetchDepartments() 
+         ]);
+
          setWorkers(fetchedWorkers);
+         const depList = fetchedDeps
+            .slice()
+            .sort((a, b) => a.depName.localeCompare(b.depName));
+         setDepartmentData(depList);
+         setDepartments(depList.map(d => d.depName));
+         setCalendarEvents(fetchedEvents);
       } catch (error) { console.error("Erro ao buscar colaboradores", error); }
    };
 
 
-   // EFFECTS
+
+   /* |--- EFFECTS ---| */
+
    // Inicialização dos dados
    useEffect(() => { fetchAndUpdateWorkers(); }, []);
    useEffect(()=>{ console.log("App rendered") }, [])
-   // Inicialização de filtragem
-   useEffect(() => {
-      setSelectedDepartments(departments);
-      setSelectedWorkers(workers.map(worker => worker.id));
+   // Inicialização de filtragem   
+   useEffect(() => { // init apenas uma vez
+      if (!filtersInitializedRef.current && departments.length && workers.length) {
+         setSelections({ workers: workers.map(w => w.id), departments: departments });
+         filtersInitializedRef.current = true;
+      }
    }, [departments, workers]);
+   useEffect(() => { // prune a seleções inválidas
+      setSelections(prev => ({
+         workers: prev.workers.filter(id => workers.some(w => w.id === id)),
+         departments: prev.departments.filter(dep => departments.includes(dep)),
+      }));
+   }, [workers, departments]);
 
 
 
 
 
-   // JSX
+   /* |--- JSX / RENDER APP ---| */
+   
    return (
       <>
          <AppShell
-         //layout='alt'
          header={{ height: 100 }}
          navbar={{ 
             width: { sm: 200, md: 300, lg: 400 }, 
@@ -278,20 +356,21 @@ const App: React.FC = () => {
             <AppShell.Navbar>
                <WorkerList
                workers={workers}
+               departments={departmentData}
                onWorkerEdit={handleWorkerEdit}
                onWorkerDelete={handleWorkerDelete}
                isLoggedIn={isLoggedIn}
                showNotification={showNotification}
 
-               selectedDepartments={selectedDepartments}
-               setSelectedDepartments={setSelectedDepartments}
-               selectedWorkers={selectedWorkers}
-               setSelectedWorkers={setSelectedWorkers}
+               selectedDepartments={selections.departments}
+               selectedWorkers={selections.workers}
+               onToggleWorker={onToggleWorker}
+               onToggleDepartment={onToggleDepartment}
                />
             </AppShell.Navbar>
 
             <AppShell.Main>
-               {/* Notifications */}{/*notification.message*/}
+               {/* Notifications */}
                {notification.visible && (
                   <Notification
                   withBorder
@@ -343,9 +422,11 @@ const App: React.FC = () => {
                   <WorkerModal 
                   onClose={handleNewWorkerClose} 
                   onUpdateWorkers={fetchAndUpdateWorkers}
+                  showNotification={showNotification}
                   currentWorker={currentWorker} 
-                  departments={departments}
-                  showNotification={showNotification} />
+                  departments={departmentData}
+                  depCounts={depCounts}   
+                  />
                </Modal>
 
                {/* Calendar */}          
@@ -363,8 +444,8 @@ const App: React.FC = () => {
                   triggerOpenModal={triggerOpenModal} 
                   resetTrigger={resetTrigger}
 
-                  selectedDepartments={selectedDepartments}
-                  selectedWorkers={selectedWorkers}
+                  selectedDepartments={selections.departments}
+                  selectedWorkers={selections.workers}
                   />
                </ScrollArea>
             </AppShell.Main>
