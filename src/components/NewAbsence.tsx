@@ -551,7 +551,11 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({ onClose, onUpdateAbsences, 
             <Text ta="center" mt="md">Tem certeza de que deseja {actionType === 'submit' ? (currentEvent ? 'atualizar dados' : 'criar esta ausência') : 'cancelar'}?</Text>
             <Group mt="md" justify='center'>
                <Button onClick={handleConfirm}>Confirmar</Button>
-               <Button onClick={() => setIsConfirmOpen(false)} color="gray">Cancelar</Button>
+               <Button 
+               variant="light" 
+               color="gray"
+               onClick={() => setIsConfirmOpen(false)}
+               >Cancelar</Button>
             </Group>
          </Modal>
       </>

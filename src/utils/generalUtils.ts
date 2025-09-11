@@ -1,6 +1,5 @@
 import fetchHolidays from './absences/fetchHolidays';
-import { ProcessedHolidayEvent, JRMWorkerData } from './types';
-//import { DepartmentData, DepColorMap } from './types';
+import { ProcessedHolidayEvent, JRMWorkerData, NameDisplay } from './types';
 
 import dayjs from "dayjs";
 import 'dayjs/locale/pt';
@@ -106,6 +105,21 @@ export const calculateBusinessDays = async (startDate: dayjs.Dayjs, endDate: day
    return count;
 };
 
+// Generator: fornece dias locais inclusivos correspondendo ao atributo [data-date="YYYY-MM-DD"] do FullCalendar 
+// Diferenciamento de labels para eventos (feriados/ausências, backgroundEvent/regularEvent)
+export function* eachDayKeyInclusive(start: Date | string, end: Date | string) {
+   let d = dayjs(start).startOf('day');
+   const last = dayjs(end).startOf('day');
+   while (!d.isAfter(last, 'day')) {
+      yield d.format('YYYY-MM-DD');
+      d = d.add(1, 'day');
+   }
+};
+// Transforma resultado de generator em array, caso necessário
+export const expandInclusive = (start: Date | string, end: Date | string) => 
+   Array.from(eachDayKeyInclusive(start, end));
+
+
 
 
 /* --------------------------- */
@@ -113,15 +127,6 @@ export const calculateBusinessDays = async (startDate: dayjs.Dayjs, endDate: day
 /* --------------------------- */
 
 // Extrair nomes de worker para UI
-/*
-export const getFirstAndLastName = (fullName: string): string => {
-   const nameParts = fullName.split(' ');
-   if (nameParts.length < 2) { return fullName; } // If there is only one part, return the full name
-   const firstName = nameParts[0];
-   const lastName = nameParts[nameParts.length - 1];
-   return `${firstName} ${lastName}`;
-};
-*/
 export const getFirstAndLastName = (fullName: string): string => {
    const parts = fullName.trim().split(/\s+/);
    if (parts.length < 2) return fullName.trim();
@@ -141,3 +146,40 @@ export const getHourColor = (value: number) => {
    if (value >= 5 && value < 8) return 'orange';
    return 'red';
 };
+
+
+
+/* ------------- */
+/* SEARCH/FILTER */
+/* ------------- */
+
+// normalização e comparação de strings
+export const norm = (input: string) => {
+if (typeof input !== 'string') return '';
+   let s = input.normalize('NFKD'); // normalização Unicode (split base + acentuação) - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/normalize
+   s = s.toLowerCase()
+      .replace(/[\p{M}]/gu, '') // Remove símbolos especiais
+      .replace(/\s+/g, ' ') // Remove todo o whitespace
+      .replace(/[^a-z0-9]/g, ''); // Remove pontuação/tudo o que não seja a-z ou 0-9
+   return s;
+};
+export const tokenize = (s: string) => /*norm(s)*/s.split(/\s+/).filter(Boolean);
+export const matchesAll = (haystack: string, terms: string[]) => {
+   const h = haystack; // ou norm(haystack) - normalizado pode interferir com nomes portugueses (como André lmao)
+   return terms.every((t) => h.includes(t));
+};
+// Agrupar workers por departamento + ordenar por label resolvido
+export const shortOf = (full: string) => getFirstAndLastName(full || '');
+export const trimOrEmpty = (s?: string | null) => (s || '').trim();
+export const resolveWorkerLabel = (
+   worker: JRMWorkerData, 
+   mode: NameDisplay
+): { label: string; tooltip: string } => {
+   const full = trimOrEmpty(worker.title);
+   const short = shortOf(full);
+   const disp = trimOrEmpty(worker.displayName);
+
+   if (mode === 'full') {return { label: full, tooltip: disp || short };}
+   if (mode === 'short') {return { label: short, tooltip: disp || full };}
+   return { label: disp || short, tooltip: full };
+}

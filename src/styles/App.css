@@ -79,21 +79,54 @@
   color: #FFF;
 }
 
-.mantine-Modal-title {
-  font-weight: 600;
-}
-
 .mantine-Modal-header {
   background-color: #269AFF;
 }
 
-.mantine-Button-root {
-  background-color: #269AFF;
+.mantine-Modal-title,
+.mantine-Drawer-title {
+  font-weight: 600;
+}
+
+.mantine-Modal-close:hover,
+.mantine-Drawer-close:hover {
+  background-color: #1c7ed6;
 }
 
 .mantine-Drawer-close {
   color: #FFF
 }
+
+
+.settings,
+.settings:hover,
+.mantine-ActionIcon-root,
+.mantine-ActionIcon-root:hover,
+.mantine-Button-root,
+.mantine-Button-root:hover {
+  outline: 0px;
+  border: 0px;
+}
+
+.mantine-RadioGroup-description {
+  text-align: center;
+}
+
+/*.mantine-Radio-root,
+.mantine-Radio-body,
+.mantine-Radio-labelWrapper,*/
+.mantine-Radio-radio,
+.mantine-Radio-icon,
+.mantine-Radio-inner,
+.mantine-Radio-label,
+.mantine-Switch-input,
+.mantine-Switch-track,
+.mantine-Switch-label {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+
 
 /* FULL CALENDAR */
 .fc-header-toolbar {

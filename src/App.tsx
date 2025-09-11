@@ -18,29 +18,40 @@ import {
    Notification, 
    Tooltip, 
    Title,
-   SegmentedControl, 
    Box, 
    Text, 
    ScrollArea,
-   Stack
-} from '@mantine/core'
-import { useDisclosure } from '@mantine/hooks';
+} from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { 
+   useDisclosure
+} from '@mantine/hooks';
 // Types
 import { 
    JRMWorkerData, 
-   Credential, 
-   CredentialsResponse, 
+   CredentialSafe,
    CalendarEvent, 
    DepartmentData, 
-   Selections
+   Selections,
+   Role,
+   CalendarView, 
+   NameDisplay,
+   APP_NAME,
+   LS_KEEP,
+   LS_NAME_DISPLAY,
+   LS_VIEW,
+   LS_AUTH
 } from './utils/types';
 // Utils
+import login from './utils/auth';
 import fetchAbsences from './utils/absences/fetchAbsences';
 import fetchWorkers from './utils/workers/fetchWorkers';
 import fetchDepartments from './utils/workers/fetchDepartments';
 import deleteWorker from './utils/workers/deleteWorker';
 // Components
 import LoginModal from './components/LoginModal';
+import SettingsMenu from './components/SettingsMenu';
+import ChangePassword from './components/ChangePassword';
 import PrintCalendar from './components/PrintCalendar';
 import WorkerList from './components/WorkerList';
 import WorkerModal from './components/NewWorker';
@@ -55,27 +66,43 @@ import WorkerCalendar from './components/WorkerCalendar';
 
 
 /* |--- COMPONENT ---| */
-
 const App: React.FC = () => {
 
    /* |--- STATES ---| */
-
+   // Autenticação e níveis de acesso
+   const [showLoginModal, setShowLoginModal] = useState(false); // ------------------------------ Mostra modal de login
+   const [isLoggedIn, setIsLoggedIn] = useState(false); // -------------------------------------- Ativa/muda elementos UI após login
+   const [authUser, setAuthUser] = useState<CredentialSafe | null>(null); // -------------------- Muda acesso a funcionalidades consoante autorização de login
+   const [authBooting, setAuthBooting] = useState(true);
+// const roleRank: Record<Role, number> = { user: 0, editor: 1, admin: 2, superadmin: 3 }; // --- Mapeia e simplifica os níveis de acesso para lógica
    // Comportamento da UI
-   const [showLoginModal, setShowLoginModal] = useState(false); // --------------------------- Mostra modal de login
-   const [isLoggedIn, setIsLoggedIn] = useState(false); // ----------------------------------- Ativa/muda elementos UI após login
-   const [triggerOpenModal, setTriggerOpenModal] = useState(false); // ----------------------- Interação com calendário abre modal de evento
-   const [showNewWorkerModal, setShowNewWorkerModal] = useState(false); // ------------------- Comportamento de modal de colaborador
-   const [opened, { open, close }] = useDisclosure(false); // -------------------------------- Comportamento do modo de impressão
-   const [isPrintMode, setIsPrintMode] = useState(false); // --------------------------------- Esconder elementos de UI para impressão
-   const [navOpened, { toggle: toggleNav }] = useDisclosure(true); // ------------------------ Comportamento da navbar (WorkerList)
+   const [showChangePw, setShowChangePw] = useState(false); // ---------------------------------- Comportamento de modal de mudança de password
+   const [triggerOpenModal, setTriggerOpenModal] = useState(false); // -------------------------- Interação com calendário abre modal de evento
+   const [showNewWorkerModal, setShowNewWorkerModal] = useState(false); // ---------------------- Comportamento de modal de colaborador
+   const [opened, { open, close }] = useDisclosure(false); // ----------------------------------- Comportamento do modo de impressão
+   const [isPrintMode, setIsPrintMode] = useState(false); // ------------------------------------ Esconder elementos de UI para impressão
+   const [navOpened, { toggle: toggleNav }] = useDisclosure(true); // --------------------------- Comportamento da navbar (WorkerList)
    // Inicialização dos dados da UI
-   const [view, setView] = useState<'dayGridMonth' | 'multiMonthYear'>('dayGridMonth'); // --- Vista do calendário
-   const [workers, setWorkers] = useState<JRMWorkerData[]>([]); // --------------------------- Todos os colaboradores
-   const [currentWorker, setCurrentWorker] = useState<JRMWorkerData | null>(null); // -------- Colaborador a ser editado
-   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]); // ------------- Todas as ausências, férias ou feriados
-   const [departments, setDepartments] = useState<string[]>([]); // -------------------------- Todos os departamentos encontrados nos dados de colaborador
-   const [departmentData, setDepartmentData] = useState<DepartmentData[]>([]); // ------------ Todos os departamentos
-   const filtersInitializedRef = useRef(false); // ------------------------------------------- inicialização de eventos filtrados pela seleção de colaboradores
+   const [workers, setWorkers] = useState<JRMWorkerData[]>([]); // ------------------------------ Todos os colaboradores
+   const [currentWorker, setCurrentWorker] = useState<JRMWorkerData | null>(null); // ----------- Colaborador a ser editado
+   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]); // ---------------- Todas as ausências, férias ou feriados
+   const [departments, setDepartments] = useState<string[]>([]); // ----------------------------- Todos os departamentos encontrados nos dados de colaborador
+   const [departmentData, setDepartmentData] = useState<DepartmentData[]>([]); // --------------- Todos os departamentos
+   const filtersInitializedRef = useRef(false); // ---------------------------------------------- inicialização de eventos filtrados pela seleção de colaboradores
+   // Opções de utilizador para UI   
+// const [view, setView] = useState<'dayGridMonth' | 'multiMonthYear'>('dayGridMonth'); // ------ Vista do calendário (old)
+   const [view, setView] = // ------------------------------------------------------------------- Vista do calendário
+      useState<CalendarView>(() => (
+         (localStorage.getItem(LS_VIEW) as CalendarView) || 'dayGridMonth'
+      ));
+   const [nameDisplay, setNameDisplay] = // ----------------------------------------------------- Vista de nomes WorkerList
+      useState<NameDisplay>(() => (
+         (localStorage.getItem(LS_NAME_DISPLAY) as NameDisplay) || 'displayName'
+      ));
+   const [persistLogin, setPersistLogin] =  // -------------------------------------------------- Mantém user ligado (skip login)
+      useState<boolean>(() => {
+         return localStorage.getItem(LS_KEEP) === '1';
+      });
    // Contagem de departamentos para validação de formulário (departamentos órfãos)
    const depCounts = useMemo(() => {
       const m = new Map<string, number>();
@@ -105,10 +132,7 @@ const App: React.FC = () => {
    }, []);
    // Inicialização de Filtragem/Checkboxes   
    const [selections, setSelections] = useState<Selections>({ workers: [], departments: [] });
-   const idsForDepartment = useCallback(
-      (depName: string) => workers.filter(w => w.dep === depName).map(w => w.id),
-      [workers]
-   );
+   const idsForDepartment = useCallback((depName: string) => workers.filter(w => w.dep === depName).map(w => w.id), [workers]);
    const onToggleWorker = useCallback((workerId: string, depName: string) => {
       setSelections(prev => {
          const isSelected = prev.workers.includes(workerId);
@@ -136,6 +160,19 @@ const App: React.FC = () => {
          return { workers: workersNext, departments: departmentsNext };
       });
    }, [idsForDepartment]);
+   // Validação de conta para permitir mudar password
+   const canChangePassword = useMemo(() => {
+      if (!authUser) return false;
+      const globalRole = authUser.roles as Role | null;
+      const appRole = authUser.apps?.[APP_NAME]?.roles as Role | undefined;
+
+      // superadmin always allowed; else appRole > 'user' or (fallback) globalRole > 'user'
+      const rank: Record<Role, number> = { user: 0, editor: 1, admin: 2, superadmin: 3 };
+      if (globalRole === 'superadmin') return true;
+      if (appRole && rank[appRole] > rank.user) return true;
+      if (globalRole && rank[globalRole] > rank.user) return true;
+      return false;
+   }, [authUser]);
 
 
 
@@ -143,18 +180,21 @@ const App: React.FC = () => {
    /* |--- HANDLERS ---| */
 
    // Login
-   const handleLoginSuccess = async (username: string, password: string) => {
-      const response = await fetch('/api/ferias/getloginferias');
-      const data: CredentialsResponse = await response.json();
-      const userExists = data.credentials.some((cred: Credential) => cred.username === username && cred.password === password);
-      if (userExists) {
-         setIsLoggedIn(true);
-         setShowLoginModal(false);
-      } else { alert('Credenciais Inválidas'); }
+   const handleLoginSuccess = (user: CredentialSafe) => {
+      setAuthUser(user);
+      setIsLoggedIn(true);
+      setShowLoginModal(false);
    };
-   const handleLoginClose = () => { 
-      setShowLoginModal(false); // IMPORTANTE - Separei close de open por causa de bugs com a tecla Esc
-   }
+   const handleLoginClose = () => { setShowLoginModal(false); } // IMPORTANTE - Separei close de open por causa de bugs com a tecla Esc
+   const handlePersistToggle = useCallback((checked: boolean) => { setPersistLogin(checked); }, []); // passar computed canChangePassword 
+   const handleLogout = useCallback(() => {
+      setAuthUser(null);
+      setIsLoggedIn(false);
+      setPersistLogin(false);
+      localStorage.removeItem(LS_KEEP);
+      localStorage.removeItem(LS_AUTH);
+      setShowChangePw(false);
+   }, []);
 
    // Worker handlers
    const handleWorkerEdit = (workerId: string) => {
@@ -189,11 +229,11 @@ const App: React.FC = () => {
    // UI handlers
    const handleOpenModal = () => { setTriggerOpenModal(true); };
    const resetTrigger = () => { setTriggerOpenModal(false); };
-   const handleViewChange = useCallback((newView: 'dayGridMonth' | 'multiMonthYear') => { setView(newView); }, []);
    const calendarSizeAdjuster = () => {
       toggleNav(); 
       fetchAndUpdateWorkers();
    };
+
 
 
 
@@ -241,6 +281,42 @@ const App: React.FC = () => {
          departments: prev.departments.filter(dep => departments.includes(dep)),
       }));
    }, [workers, departments]);
+
+   // Inicialização de opções de utilizador
+   useEffect(() => localStorage.setItem(LS_VIEW, view), [view]); // View do calendário
+   useEffect(() => localStorage.setItem(LS_NAME_DISPLAY, nameDisplay), [nameDisplay]); // Nomes da WorkerList 
+   useEffect(() => { // Manter user logged in
+      if (persistLogin) {
+         localStorage.setItem(LS_KEEP, '1');
+      } else {
+         localStorage.removeItem(LS_KEEP);
+         localStorage.removeItem(LS_AUTH); // dropping stale saved creds
+      }
+   }, [persistLogin]);
+   // Auto-login
+   useEffect(() => {
+      ( async () => {
+         try {
+            const keep = localStorage.getItem(LS_KEEP) === '1';
+            const raw = localStorage.getItem(LS_AUTH);
+            if (keep && raw) {
+               // try auto-login
+               const { username, password, app } = JSON.parse(raw);
+               const { user } = await login(username, password, app || APP_NAME);
+               handleLoginSuccess(user);
+            } else if (!keep) {
+               localStorage.removeItem(LS_AUTH); // ensure no stale creds if flag is off
+            }
+         } catch {
+            localStorage.removeItem(LS_AUTH); // saved creds invalid → drop them
+         } finally {
+            setAuthBooting(false); // UI can render
+         }
+      } )();
+   }, []);
+
+
+
 
 
 
@@ -312,7 +388,7 @@ const App: React.FC = () => {
                         {isLoggedIn ? (
                            <>
                               <Button ml="xs" onClick={handleNewWorkerOpen}>Novo Colaborador</Button>
-                              <Button ml="xs" onClick={handleOpenModal}>Adicionar Ausência</Button>
+                              <Button ml="xs" onClick={handleOpenModal}>Nova Ausência</Button>
                            </>
                         ) : (
                            <Button ml="xs" onClick={() => setShowLoginModal(true)}>Login</Button>
@@ -324,9 +400,8 @@ const App: React.FC = () => {
                         w={200}
                         >
                            <Button
-                           variant="light"
+                           variant="transparent"
                            ml="50px"
-                           style={{ backgroundColor: "#FFF" }}
                            onClick={fetchAndUpdateWorkers}
                            >Refrescar Calendário</Button>
                         </Tooltip>
@@ -334,19 +409,18 @@ const App: React.FC = () => {
 
                      {/* View */}
                      <Flex mr="lg" align="center">
-                        <Stack gap={0}>
-                           <Text fw={700}>Vista</Text>
-                           <SegmentedControl
-                           color='blue'
-                           radius="xl"
-                           value={view}
-                           onChange={(value) => handleViewChange(value as 'dayGridMonth' | 'multiMonthYear')}
-                           data={[
-                              { label: 'Mensal', value: 'dayGridMonth' },
-                              { label: 'Anual', value: 'multiMonthYear' }
-                           ]}
-                           />
-                        </Stack>
+                        <SettingsMenu
+                        calendarView={view}
+                        onCalendarViewChange={setView}
+                        nameDisplay={nameDisplay}
+                        onNameDisplayChange={setNameDisplay}
+                        persistLogin={persistLogin}
+                        onPersistLoginChange={handlePersistToggle}
+                        isLoggedIn={isLoggedIn}
+                        onLogout={handleLogout}
+                        onChangePassword={() => setShowChangePw(true)} 
+                        canChangePassword={canChangePassword}
+                        />
                      </Flex>
                   </Flex>
                </Flex>
@@ -362,10 +436,11 @@ const App: React.FC = () => {
                isLoggedIn={isLoggedIn}
                showNotification={showNotification}
 
-               selectedDepartments={selections.departments}
+               //selectedDepartments={selections.departments}
                selectedWorkers={selections.workers}
                onToggleWorker={onToggleWorker}
                onToggleDepartment={onToggleDepartment}
+               nameDisplay={nameDisplay}
                />
             </AppShell.Navbar>
 
@@ -392,20 +467,52 @@ const App: React.FC = () => {
                )}
 
                {/* Login */}
+               {!authBooting && showLoginModal && (
+                  <Modal
+                  opened={showLoginModal}
+                  onClose={() => setShowLoginModal(false)}
+                  title="Login"
+                  centered
+                  withCloseButton={true}
+                  closeOnClickOutside={false}
+                  className='formModal'
+                  overlayProps={{ 
+                     backgroundOpacity: 0.55, 
+                     blur: 3 
+                  }}            
+                  style={{ 
+                     left: "0%", 
+                     position: "absolute" 
+                  }} >
+                     <LoginModal 
+                     onLoginSuccess={handleLoginSuccess} 
+                     onClose={handleLoginClose}
+                     />
+                  </Modal>
+               )}
+
+               {/* Change password */}
                <Modal
-               opened={showLoginModal}
-               onClose={() => setShowLoginModal(false)}
-               title="Login"
+               opened={showChangePw}
+               onClose={() => setShowChangePw(false)}
+               title="Alterar palavra-passe"
                centered
-               withCloseButton={true}
-               closeOnClickOutside={false}
-               className='formModal'
-               overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}            
-               style={{ left: "0%", position: "absolute" }} >
-                  <LoginModal 
-                  onLoginSuccess={handleLoginSuccess} 
-                  onClose={handleLoginClose}
-                  />
+               >
+                  {authUser && (
+                     <ChangePassword
+                     user={authUser}
+                     appName={APP_NAME}
+                     onSuccess={() => {
+                        setShowChangePw(false);
+                        notifications?.show?.({ 
+                           message: 'Palavra-passe atualizada', 
+                           color: 'green' 
+                        });
+                     }}
+                     onCancel={
+                        () => setShowChangePw(false)
+                     } />
+                  )}
                </Modal>
 
                {/* NewWorker */}
@@ -446,6 +553,7 @@ const App: React.FC = () => {
 
                   selectedDepartments={selections.departments}
                   selectedWorkers={selections.workers}
+                  nameDisplay={nameDisplay}
                   />
                </ScrollArea>
             </AppShell.Main>

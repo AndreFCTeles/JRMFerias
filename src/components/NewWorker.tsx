@@ -430,7 +430,7 @@ const WorkerModal: React.FC<WorkerModalProps> = ({
             <Text ta="center" mt="md">{confirmMessage}</Text>
             <Group mt="md" justify="center">
                <Button onClick={handleConfirm}>Confirmar</Button>
-               <Button onClick={() => setIsConfirmOpen(false)} color="gray">
+               <Button variant="light" onClick={() => setIsConfirmOpen(false)} color="gray">
                   Cancelar
                </Button>
             </Group>

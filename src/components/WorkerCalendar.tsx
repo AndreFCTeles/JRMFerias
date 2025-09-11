@@ -1,6 +1,21 @@
 //Frameworks
-import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
-import { Tooltip, Notification, Modal, Text, Button, Group, Menu } from '@mantine/core';
+import React, { 
+   useState, 
+   useEffect, 
+   useCallback, 
+   useRef,
+   useMemo,
+   memo 
+} from 'react';
+import { 
+   Tooltip, 
+   Notification, 
+   Modal,
+   Text, 
+   Button, 
+   Group, 
+   Menu 
+} from '@mantine/core';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import multiMonthPlugin from '@fullcalendar/multimonth';
@@ -13,9 +28,20 @@ dayjs.locale('pt');
 // Components
 import AbsenceModal from './NewAbsence';
 // Types
-import { CalendarEvent, JRMWorkerData } from '../utils/types';
+import { 
+   CalendarView, 
+   CalendarEvent, 
+   JRMWorkerData, 
+   NameDisplay, 
+   Hover
+} from '../utils/types';
 // Utils
-import { processDate, isWeekend } from '../utils/generalUtils';
+import { 
+   processDate, 
+   isWeekend, 
+   resolveWorkerLabel, 
+   expandInclusive
+} from '../utils/generalUtils';
 import fetchHolidays from '../utils/absences/fetchHolidays';
 import updateAbsence from '../utils/absences/updateAbsence';
 import deleteAbsence from '../utils/absences/deleteAbsence';
@@ -25,13 +51,18 @@ interface WorkerCalendarProps {
    workers: JRMWorkerData[];
    workerEvents: CalendarEvent[];
    isLoggedIn: boolean;
-   view: 'dayGridMonth' | 'multiMonthYear';
+   view: CalendarView; 
    fetchAndUpdateWorkers: () => void;
    triggerOpenModal: boolean;
    resetTrigger: () => void;
-   showNotification: (title: string, message: string | React.ReactNode, color: string) => void;
+   showNotification: (
+      title: string, 
+      message: string | React.ReactNode, 
+      color: string
+   ) => void;
    selectedDepartments: string[];
    selectedWorkers: string[];
+   nameDisplay: NameDisplay
 }
 
 
@@ -49,8 +80,10 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
    resetTrigger,
    showNotification,
    selectedDepartments,
-   selectedWorkers
+   selectedWorkers,
+   nameDisplay
 }) => {
+
    // STATES/VARS
    // functionality
    const [error, setError] = useState<string | null>(null);
@@ -64,6 +97,10 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
    // events
    const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
    const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
+   // tooltips
+   const [hover, setHover] = useState<Hover>(null);
+   const [holidayByDate, setHolidayByDate] = useState<Map<string, string[]>>(new Map());
+   const holidayByDateRef = useRef(holidayByDate);
    // trackers for default values
    const calendarRef = useRef<FullCalendar>(null);
    // notifications
@@ -79,12 +116,17 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
 
 
 
-   // DATA FETCHING   
+
+
+
+
+
+   // DATA FETCHING
    const fetchEvents = useCallback(async (year: number) => {
       console.log("Worker Calendar fetching data");
       setError(null);
       try {
-         const currentYearHolidays = await fetchHolidays(year);      
+         const currentYearHolidays = await fetchHolidays(year);
          if (currentYearHolidays.length === 0) {
             showNotification(
                "AVISO",
@@ -103,12 +145,17 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
             ...(currentYearHolidays || [])
          ];
          setLocalEvents(combinedEvents);
-         //console.log(combinedEvents)
       } catch (error) {
          console.error('Error fetching events:', error);
          setError('Ocorreu um problema ao carregar dados. Por favor tente mais tarde.');
       }
    }, [workerEvents, showNotification]);
+
+
+
+
+
+
 
 
 
@@ -119,11 +166,17 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
          const calendarApi = calendarRef.current.getApi();
          const currentView = calendarApi.view.type;                  
          setCurrentYearInView(dayjs(start).year());
-         if (currentView === 'dayGridMonth') { 
-            setLastMonthInView(dayjs(start).month()); 
-         }
+         if (currentView === 'dayGridMonth') { setLastMonthInView(dayjs(start).month()); }
       }
-   }, []);   
+   }, []); 
+
+   // Associação de nome - id (para comparação com nome no evento)
+   const workerById = useMemo(() => {
+      const m = new Map<string, JRMWorkerData>();
+      for (const w of workers) m.set(w.id, w);
+      return m;
+   }, [workers]);
+
 
    // Editar eventos
    const handleEventEdit = useCallback(async (eventId: string, start?: string, end?: string) => {
@@ -135,7 +188,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
                const updatedEvent = { ...eventToEdit, start, end };
                try {
                   await updateAbsence(workers, eventId, updatedEvent);
-                  showNotification("Successo", "Evento atualizado com sucesso", "green");
+                  showNotification("Sucesso", "Evento atualizado com sucesso", "green");
                   await fetchAndUpdateWorkers();
                } catch (error) {
                   console.error("Error updating event:", error);
@@ -219,6 +272,28 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
          backgroundColor: processedEvent.backgroundColor
       }));
    }, [filterEvents]);
+   const adjustedEvents = useMemo(() => getAdjustedEventsForDisplay(), [getAdjustedEventsForDisplay]);
+
+   const buildWorkerEventTooltip = (
+      event: any,
+      workerById: Map<string, JRMWorkerData>,
+      nameDisplay: NameDisplay
+   ): string => {
+      const wid = event.extendedProps?.workerId as string | undefined;
+      const worker = wid ? workerById.get(wid) : undefined;
+
+      const { label, tooltip } = worker
+         ? resolveWorkerLabel(worker, nameDisplay)
+         : { label: String(event.title ?? ''), tooltip: String(event.title ?? '') };
+
+      // the inclusive end you already put on the input object is accessible at extendedProps.originalEnd
+      const s = event.start ? dayjs(processDate(event.start)).format('D MMMM') : '';
+      const e = dayjs(event.extendedProps?.originalEnd ? processDate(event.extendedProps.originalEnd) : s).format('D MMMM');
+
+      return s !== e ? `${label}:\n\nDe ${s} a ${e}` : `${tooltip}: ${s}`;
+   }
+
+
 
 
 
@@ -250,7 +325,33 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
       }
    }, [triggerOpenModal, resetTrigger]);
 
+   // Distinção de tipos de eventos para Tooltips
+   useEffect(() => {
+      const map = new Map<string, string[]>();
+
+      for (const ev of adjustedEvents) {
+         if (ev.display !== 'background') continue; // only holidays
+         const start = ev.start!;
+         const endIncl = (ev as any).originalEnd ?? ev.end ?? ev.start!;
+
+         for (const key of expandInclusive(start, endIncl)) {
+            const arr = map.get(key) ?? [];
+            if (!arr.includes(ev.title as string)) arr.push(ev.title as string);
+            map.set(key, arr);
+         }
+      }
+      setHolidayByDate(map);
+   }, [adjustedEvents, setHolidayByDate]);
+   useEffect(() => { holidayByDateRef.current = holidayByDate; }, [holidayByDate]);
+
+   // sanity
    useEffect(()=>{ console.log("WorkerCalendar rendered") }, [])
+
+
+
+
+
+
 
 
 
@@ -296,8 +397,6 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
                buttonText: 'Yearly',
                visibleRange: () => {
                   return {
-                     //start: new Date(currentYearInView, 0, 1), // January 1st
-                     //end: new Date(currentYearInView, 11, 31)  // December 31st
                      start: dayjs(`${currentYearInView}-1-1`).toDate(),
                      end: dayjs(`${currentYearInView}-12-31`).toDate()
                   };
@@ -307,53 +406,63 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
          }}
          titleFormat={{ month: 'long', year: 'numeric' }}
          editable={isLoggedIn} 
-         events={getAdjustedEventsForDisplay()}
+         events={adjustedEvents}
          dayCellClassNames={(arg) => (isWeekend(arg.date) ? "weekend" : "")}
-         eventContent={({ event }) => {
-            // Formatar datas para leitura de tooltip
-            const formattedStartDate = event.start ? dayjs(processDate(event.start)).format("D MMMM") : '';
-            const formattedEndDate = dayjs(event.extendedProps.originalEnd ? processDate(event.extendedProps.originalEnd) : formattedStartDate).format("D MMMM");
-            const tooltipContent = formattedStartDate !== formattedEndDate
-                                 ? `${event.title}:\n De ${formattedStartDate} a ${formattedEndDate}`
-                                 : `${event.title}: ${formattedStartDate}`;
-            const backgroundEvent = <Tooltip label={event.title}>
-                                       <div style={{
-                                          fontSize:'12px',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis'
-                                       }}>{/*view === 'dayGridMonth'? event.title : 'Feriado' */}
-                                          Feriado
-                                       </div>
-                                    </Tooltip>;
+         dayCellDidMount={(arg) => {
+            const key = dayjs(arg.date).format('YYYY-MM-DD');
+            const selector = `[data-date="${key}"]`; // FullCalendar adds this to the cell <td>
 
-            const regularEvent = <Tooltip 
-               multiline
-               w={200}
-               withArrow
-               arrowOffset={50} 
-               arrowSize={8}
-               label={tooltipContent}
-               transitionProps={{ transition: 'slide-down', duration: 300 }}
-               ><div style={event._def.allDay ? { 
-                  backgroundColor: `${event._def.ui.backgroundColor}`
-               } : { // Estilos para ausências parciais
-                  backgroundColor: `${event._def.ui.backgroundColor}`,
-                  backgroundImage: `linear-gradient(
-                     to left, 
-                     #ffffff 0, 
-                     #ffffff 10px, 
-                     transparent 50%, 
-                     transparent 5%
-                  )`,
-                  backgroundSize: '100% 100%',
-               }}>{event.title}</div>
-               </Tooltip>;
+            const onEnter = () => {
+               const names = holidayByDateRef.current.get(key);
+               if (!names || names.length === 0) return; // only show tooltip if day has holidays
+               setHover({ kind: 'day', key, selector, label: names.join('\n') });
+            };
+            const onLeave = () => {
+               setHover(h => (h?.kind === 'day' && h.key === key ? null : h));
+            };
+
+            arg.el.addEventListener('mouseenter', onEnter);
+            arg.el.addEventListener('mouseleave', onLeave);
+
+            // stash cleanup
+            (arg as any)._cleanup = () => {
+               arg.el.removeEventListener('mouseenter', onEnter);
+               arg.el.removeEventListener('mouseleave', onLeave);
+            };
+         }}
+         dayCellWillUnmount={(arg) => { (arg as any)._cleanup?.(); }}
+         eventContent={({ event }) => {
+            // Formatar worker names para label evento
+            const wid = event.extendedProps?.workerId as string | undefined;
+            const worker = wid ? workerById.get(wid) : undefined;
+            const {label} = worker
+               ? resolveWorkerLabel(worker, nameDisplay)
+               : { label: event.title as string};
+            // Diferenciar tipos de evento
+            const backgroundEvent = <div style={{
+                                       fontSize:'12px',
+                                       overflow: 'hidden',
+                                       textOverflow: 'ellipsis'
+                                    }}>Feriado</div>
+            const regularEvent = <div style={event._def.allDay ? { 
+                                    backgroundColor: `${event._def.ui.backgroundColor}`
+                                 } : { // Estilos para ausências parciais
+                                    backgroundColor: `${event._def.ui.backgroundColor}`,
+                                    backgroundImage: `linear-gradient(
+                                       to left, 
+                                       #ffffff 0,
+                                       #ffffff 10px,
+                                       transparent 50%,
+                                       transparent 5%
+                                    )`,
+                                    backgroundSize: '100% 100%',
+                                 }}>{label}</div>
 
             return (<>
                {event.display==='background' ? backgroundEvent : (
                   // Menu de contexto
                   <Menu 
-                  width={100} 
+                  width={100}
                   transitionProps={{ transition: 'slide-right', duration: 150 }}
                   shadow="md">
                      <Menu.Target>{regularEvent}</Menu.Target>
@@ -368,7 +477,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
                         }}>Eliminar</Menu.Item>
                      </Menu.Dropdown>
                   </Menu>
-               )}            
+               )}
             </> );
          }}
          datesSet={handleDatesSet}
@@ -380,13 +489,17 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
                event.setProp('editable', false);
                event.setProp('durationEditable', false);
             }
+
+            // Marcar elementos com atributo único para serem targets de Tooltips
+            const segId = event._instance?.instanceId ?? `${event.id}-${event.startStr ?? ''}`;
+            el.setAttribute('data-evk', String(segId));
          }}
          eventResize={({ event }) => {
             if (event.extendedProps.type == 'vacation') {
-               const updatedStart = event.start ? processDate(event.start) : '';                  
+               const updatedStart = event.start ? processDate(event.start) : '';
                const updatedEnd = event.end ? processDate(event.end,-1) : event.start ? processDate(event.start) : '';     
                handleEventEdit(event.extendedProps.eventId, updatedStart, updatedEnd);
-            } else { return; }            
+            } else { return; }
          }}
          eventDrop={({ event }) => {
             let updatedStart;
@@ -410,10 +523,22 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
             }
             handleEventEdit(event.extendedProps.eventId, updatedStart, updatedEnd);
          }}
+         eventMouseEnter={(arg) => {
+            // ignore holidays (they use the day-cell tooltip)
+            if (arg.event.display === 'background') return;
+            const segId = arg.event._instance?.instanceId ?? `${arg.event.id}-${arg.event.startStr ?? ''}`;
+            const selector = `[data-evk="${segId}"]`;
+            // Build label 
+            const label = buildWorkerEventTooltip(arg.event, workerById, nameDisplay);
+            setHover({ kind: 'event', key: String(segId), selector, label });
+         }}
+         eventMouseLeave={(arg) => {
+            const segId = arg.event._instance?.instanceId ?? `${arg.event.id}-${arg.event.startStr ?? ''}`;
+            setHover(h => (h?.kind === 'event' && h.key === String(segId) ? null : h));
+         }}
          dateClick={(info) => { // criar nova ausência em dia vazio
             info.dayEl.addEventListener('dblclick', () => handleDateDoubleClick(info));
-         }}
-         />
+         }} />
 
          {/* Modal/Form */}
          <Modal
@@ -440,7 +565,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
          opened={isConfirmEventDelOpen} 
          onClose={() => setIsConfirmEventDelOpen(false)} 
          closeOnClickOutside={false}
-         title="Confirmar"              
+         title="Confirmar"
          style={{
             left: "0%",
             position: "absolute"
@@ -452,6 +577,16 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
                <Button onClick={() => setIsConfirmEventDelOpen(false)} color="gray">Cancelar</Button>
             </Group>
          </Modal>
+
+         {/* Event tooltips */}
+         {hover && (
+            <Tooltip
+            multiline
+            opened //={!!hover}
+            label={hover?.label}
+            target={hover?.selector}
+            />
+         )}
       </>
    );
 };
