@@ -1,3 +1,6 @@
+export const APP_NAME            = 'JRMFerias';
+export const BUSINESS_WORKER_ID  = '1';                  // Electrex
+
 // USER SETTINGS
 export const LS_LAST             = 'jrm_lastUsername';   // last username (conveniência)
 export const LS_REMEMBER         = 'jrm_rememberMe';     // '1' | '0'  (remember username)
@@ -11,8 +14,6 @@ export const LS_THEME            = 'jrm_colorScheme';    // 'light' | 'dark' if 
 export type CalendarView         = 'dayGridMonth' | 'multiMonthYear';
 export type NameDisplay          = 'full' | 'short' | 'displayName';
 
-export const APP_NAME            = 'JRMFerias';
-export const BUSINESS_WORKER_ID  = '1';                  // Electrex
 
 // AUTHENTICATION
 export type Role                 = 'user' | 'editor' | 'admin' | 'superadmin';

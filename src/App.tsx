@@ -23,9 +23,7 @@ import {
    ScrollArea,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { 
-   useDisclosure
-} from '@mantine/hooks';
+import { useDisclosure } from '@mantine/hooks';
 // Types
 import { 
    JRMWorkerData, 
@@ -73,7 +71,7 @@ const App: React.FC = () => {
    const [showLoginModal, setShowLoginModal] = useState(false); // ------------------------------ Mostra modal de login
    const [isLoggedIn, setIsLoggedIn] = useState(false); // -------------------------------------- Ativa/muda elementos UI após login
    const [authUser, setAuthUser] = useState<CredentialSafe | null>(null); // -------------------- Muda acesso a funcionalidades consoante autorização de login
-   const [authBooting, setAuthBooting] = useState(true);
+   const [authBooting, setAuthBooting] = useState(true); // ------------------------------------- Auto-login
 // const roleRank: Record<Role, number> = { user: 0, editor: 1, admin: 2, superadmin: 3 }; // --- Mapeia e simplifica os níveis de acesso para lógica
    // Comportamento da UI
    const [showChangePw, setShowChangePw] = useState(false); // ---------------------------------- Comportamento de modal de mudança de password
@@ -240,7 +238,6 @@ const App: React.FC = () => {
 
    
    /* |--- DATA FETCHING ---| */
-   
    const fetchAndUpdateWorkers = async () => {
       try {
          console.log("App fetching data");

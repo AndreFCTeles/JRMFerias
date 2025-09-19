@@ -220,7 +220,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
       setShowNewAbsenceModal(false);
    };
 
-   
+
    // Double-click: Criar nova ausência em dia vazio
    const handleDateDoubleClick = (arg: DateClickArg) => {
       console.log("Double-click detected. isLoggedIn:", isLoggedIn);
@@ -231,7 +231,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
          showNotification("Ação necessária", 'Por favor clique em "Login" e introduza as suas credenciais de acesso para efetuar esta operação', "red");
       }
    };
-   
+
     // Double-click: Editar ausência existente
    const eventDCHandler = useCallback((eventId: string) => {
       console.log("Double-click detected. isLoggedIn:", isLoggedIn);
@@ -247,13 +247,13 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
 
    // Confirmar edição de dados de Modal
    const handleConfirm = async () => {
-      if (selectedEventId) {
-         handleEventDelete(selectedEventId);
-         setIsConfirmEventDelOpen(false);
-         setSelectedEventId(null);
-      }
+      if (!selectedEventId) return;
+      await handleEventDelete(selectedEventId);
+      setIsConfirmEventDelOpen(false);
+      setSelectedEventId(null);
    };
 
+   // Filtragem de eventos com base nos checkpoints de WorkerList
    const filterEvents = useCallback(() => {
       return localEvents.filter((event) =>
          event.display === 'background' ||
@@ -274,6 +274,7 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
    }, [filterEvents]);
    const adjustedEvents = useMemo(() => getAdjustedEventsForDisplay(), [getAdjustedEventsForDisplay]);
 
+   // Construir dados para tooltip
    const buildWorkerEventTooltip = (
       event: any,
       workerById: Map<string, JRMWorkerData>,
@@ -286,12 +287,184 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
          ? resolveWorkerLabel(worker, nameDisplay)
          : { label: String(event.title ?? ''), tooltip: String(event.title ?? '') };
 
-      // the inclusive end you already put on the input object is accessible at extendedProps.originalEnd
       const s = event.start ? dayjs(processDate(event.start)).format('D MMMM') : '';
       const e = dayjs(event.extendedProps?.originalEnd ? processDate(event.extendedProps.originalEnd) : s).format('D MMMM');
 
       return s !== e ? `${label}:\n\nDe ${s} a ${e}` : `${tooltip}: ${s}`;
    }
+
+
+
+
+
+
+
+
+
+
+   // Declarações para atributos do calendário
+   const headerToolbar = useMemo(
+      () => ({ left: 'prev next', center: 'title', right: '' }), []
+   );
+
+   const views = useMemo(() => ({
+      dayGridMonth: {
+         type: 'dayGridMonth' as const,
+         buttonText: 'Monthly',
+         showNonCurrentDates: false,
+      },
+      multiMonthYear: {
+         type: 'multiMonthYear' as const,
+         duration: { months: 12 },
+         buttonText: 'Yearly',
+         visibleRange: () => ({
+            start: dayjs(`${currentYearInView}-1-1`).toDate(),
+            end: dayjs(`${currentYearInView}-12-31`).toDate(),
+         }),
+         titleFormat: { year: 'numeric' as const },
+      },
+   }), [currentYearInView]);
+
+   const onDayCellDidMount = useCallback((arg: any) => {
+      const key = dayjs(arg.date).format('YYYY-MM-DD');
+      const selector = `[data-date="${key}"]`;
+
+      const onEnter = () => {
+         const names = holidayByDateRef.current.get(key);
+         if (!names || names.length === 0) return; // only show tooltip if day has holidays
+         setHover({ kind: 'day', key, selector, label: names.join('\n') });
+      };
+      const onLeave = () => {
+         setHover(h => (h?.kind === 'day' && h.key === key ? null : h));
+      };
+
+      arg.el.addEventListener('mouseenter', onEnter);
+      arg.el.addEventListener('mouseleave', onLeave);
+
+      // stash cleanup
+      (arg as any)._cleanup = () => {
+         arg.el.removeEventListener('mouseenter', onEnter);
+         arg.el.removeEventListener('mouseleave', onLeave);
+      };
+   }, []);
+   const onDayCellWillUnmount = useCallback((arg: any) => {(arg as any)._cleanup?.();}, []);
+
+   const renderEventContent = useCallback(({ event }: any) => {
+      // Formatar worker names para label evento
+      const wid = event.extendedProps?.workerId as string | undefined;
+      const worker = wid ? workerById.get(wid) : undefined;
+      const {label} = worker
+         ? resolveWorkerLabel(worker, nameDisplay)
+         : { label: event.title as string};
+      // Diferenciar tipos de evento
+      const backgroundEvent = <div style={{
+                                 fontSize:'12px',
+                                 overflow: 'hidden',
+                                 textOverflow: 'ellipsis'
+                              }}>Feriado</div>
+      const regularEvent = <div style={event._def.allDay ? { 
+                              backgroundColor: `${event._def.ui.backgroundColor}`
+                           } : { // Estilos para ausências parciais
+                              backgroundColor: `${event._def.ui.backgroundColor}`,
+                              backgroundImage: `linear-gradient(
+                                 to left, 
+                                 #ffffff 0,
+                                 #ffffff 10px,
+                                 transparent 50%,
+                                 transparent 5%
+                              )`,
+                              backgroundSize: '100% 100%',
+                           }}>{label}</div>
+
+      return (<>
+         {event.display==='background' ? backgroundEvent : (
+            // Menu de contexto
+            <Menu 
+            width={100}
+            transitionProps={{ transition: 'slide-right', duration: 150 }}
+            shadow="md">
+               <Menu.Target>{regularEvent}</Menu.Target>
+               <Menu.Dropdown>
+                  <Menu.Item onClick={() => {
+                     if (isLoggedIn) {handleEventEdit(event.extendedProps.eventId)}
+                     else {showNotification("Ação necessária", 'Por favor clique em "Login" e introduza as suas credenciais de acesso para efetuar esta operação', "red");}
+                  }}>Editar</Menu.Item>
+                  <Menu.Item onClick={() => {
+                     if (isLoggedIn) {handleEventDelete(event.extendedProps.eventId)}
+                     else {showNotification("Ação necessária", 'Por favor clique em "Login" e introduza as suas credenciais de acesso para efetuar esta operação', "red");}
+                  }}>Eliminar</Menu.Item>
+               </Menu.Dropdown>
+            </Menu>
+         )}
+      </> );
+   }, [workerById, nameDisplay, isLoggedIn, handleEventEdit, handleEventDelete, showNotification]);
+
+   const onEventDidMount = useCallback(({ event, el }: any) => {
+      el.oncontextmenu = (e: MouseEvent) => { e.preventDefault() }
+      el.ondblclick = () =>  { eventDCHandler(event.extendedProps.eventId) }  // Editar ausência com double-click
+      
+      if (event.extendedProps.type === 'off-day') { // Retirar funcionalidade de ausências (não-férias)
+         event.setProp('editable', false);
+         event.setProp('durationEditable', false);
+      }
+
+      // Marcar elementos com atributo único para serem targets de Tooltips
+      const segId = event._instance?.instanceId ?? `${event.id}-${event.startStr ?? ''}`;
+      el.setAttribute('data-evk', String(segId));
+   }, [eventDCHandler]);
+
+   const onEventResize = useCallback(({ event }: any) => {
+      if (event.extendedProps.type == 'vacation') return;
+      const updatedStart = event.start ? processDate(event.start) : '';
+      const updatedEnd = event.end ? processDate(event.end,-1) : event.start ? processDate(event.start) : '';     
+      handleEventEdit(event.extendedProps.eventId, updatedStart, updatedEnd);
+   }, [handleEventEdit]);
+
+   const onEventDrop = useCallback(({ event }: any) => {
+      let updatedStart;
+      let updatedEnd;
+      const isOffDay = event.extendedProps.type === 'off-day';
+      const hasTimeComponent  = 
+         event.start && 
+         event.extendedProps.originalEnd &&
+         (
+            event.start.toString().includes('T') || 
+            event.extendedProps.originalEnd.toString().includes('T')
+         );
+      
+      if (isOffDay && hasTimeComponent ){
+         const endTime = dayjs(event.extendedProps.originalEnd).format('HH:mm');
+         updatedStart = `${dayjs(event.start).format('YYYY-MM-DDTHH:mm')}`;
+         updatedEnd = `${dayjs(event.end).add(-1).format('YYYY-MM-DD')}T${endTime}`;
+      } else {
+         updatedStart = event.start ? processDate(event.start) : ''
+         updatedEnd = event.end ? processDate(event.end, -1) : event.start ? processDate(event.start) : '';
+      }
+      handleEventEdit(event.extendedProps.eventId, updatedStart, updatedEnd);
+   }, [handleEventEdit]);
+
+   const onEventMouseEnter = useCallback((arg: any) => {
+      if (arg.event.display === 'background') return; // holiday uses day cell tooltip
+      const segId = arg.event._instance?.instanceId ?? `${arg.event.id}-${arg.event.startStr ?? ''}`;
+      const selector = `[data-evk="${segId}"]`;
+      const label = buildWorkerEventTooltip(arg.event, workerById, nameDisplay);
+      setHover({ kind: 'event', key: String(segId), selector, label });
+   }, [workerById, nameDisplay]); // setHover is stable
+
+   const onEventMouseLeave = useCallback((arg: any) => {
+      const segId = arg.event._instance?.instanceId ?? `${arg.event.id}-${arg.event.startStr ?? ''}`;
+      setHover(h => (h?.kind === 'event' && h.key === String(segId) ? null : h));
+   }, []);
+
+   const onDateClick = useCallback((info: any) => {
+      info.dayEl.addEventListener('dblclick', () => handleDateDoubleClick(info));
+   }, [handleDateDoubleClick]);
+
+
+
+
+
+
 
 
 
@@ -356,9 +529,15 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
 
 
 
+
+
+
+
+
    // JSX
    return (
       <>
+         {/* Notification System */}
          {error && ( <Notification color="red" onClose={() => setError(null)}> {error} </Notification> )}                  
          {notification.visible && (
             <Notification
@@ -380,165 +559,23 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
          plugins={[dayGridPlugin, multiMonthPlugin, interactionPlugin]}
          initialView={view}
          scrollTimeReset={false}
-         headerToolbar={{
-            left: 'prev next',
-            center: 'title',
-            right: ''
-         }}
-         views={{
-            dayGridMonth: {
-               type: 'dayGridMonth',
-               buttonText: 'Monthly',
-               showNonCurrentDates: false
-            },
-            multiMonthYear: {
-               type: 'multiMonthYear',
-               duration: { months: 12 },
-               buttonText: 'Yearly',
-               visibleRange: () => {
-                  return {
-                     start: dayjs(`${currentYearInView}-1-1`).toDate(),
-                     end: dayjs(`${currentYearInView}-12-31`).toDate()
-                  };
-               },
-               titleFormat: { year: 'numeric' }
-            },
-         }}
+         headerToolbar={headerToolbar}
+         views={views}
          titleFormat={{ month: 'long', year: 'numeric' }}
          editable={isLoggedIn} 
          events={adjustedEvents}
          dayCellClassNames={(arg) => (isWeekend(arg.date) ? "weekend" : "")}
-         dayCellDidMount={(arg) => {
-            const key = dayjs(arg.date).format('YYYY-MM-DD');
-            const selector = `[data-date="${key}"]`; // FullCalendar adds this to the cell <td>
-
-            const onEnter = () => {
-               const names = holidayByDateRef.current.get(key);
-               if (!names || names.length === 0) return; // only show tooltip if day has holidays
-               setHover({ kind: 'day', key, selector, label: names.join('\n') });
-            };
-            const onLeave = () => {
-               setHover(h => (h?.kind === 'day' && h.key === key ? null : h));
-            };
-
-            arg.el.addEventListener('mouseenter', onEnter);
-            arg.el.addEventListener('mouseleave', onLeave);
-
-            // stash cleanup
-            (arg as any)._cleanup = () => {
-               arg.el.removeEventListener('mouseenter', onEnter);
-               arg.el.removeEventListener('mouseleave', onLeave);
-            };
-         }}
-         dayCellWillUnmount={(arg) => { (arg as any)._cleanup?.(); }}
-         eventContent={({ event }) => {
-            // Formatar worker names para label evento
-            const wid = event.extendedProps?.workerId as string | undefined;
-            const worker = wid ? workerById.get(wid) : undefined;
-            const {label} = worker
-               ? resolveWorkerLabel(worker, nameDisplay)
-               : { label: event.title as string};
-            // Diferenciar tipos de evento
-            const backgroundEvent = <div style={{
-                                       fontSize:'12px',
-                                       overflow: 'hidden',
-                                       textOverflow: 'ellipsis'
-                                    }}>Feriado</div>
-            const regularEvent = <div style={event._def.allDay ? { 
-                                    backgroundColor: `${event._def.ui.backgroundColor}`
-                                 } : { // Estilos para ausências parciais
-                                    backgroundColor: `${event._def.ui.backgroundColor}`,
-                                    backgroundImage: `linear-gradient(
-                                       to left, 
-                                       #ffffff 0,
-                                       #ffffff 10px,
-                                       transparent 50%,
-                                       transparent 5%
-                                    )`,
-                                    backgroundSize: '100% 100%',
-                                 }}>{label}</div>
-
-            return (<>
-               {event.display==='background' ? backgroundEvent : (
-                  // Menu de contexto
-                  <Menu 
-                  width={100}
-                  transitionProps={{ transition: 'slide-right', duration: 150 }}
-                  shadow="md">
-                     <Menu.Target>{regularEvent}</Menu.Target>
-                     <Menu.Dropdown>
-                        <Menu.Item onClick={() => {
-                           if (isLoggedIn) {handleEventEdit(event.extendedProps.eventId)}
-                           else {showNotification("Ação necessária", 'Por favor clique em "Login" e introduza as suas credenciais de acesso para efetuar esta operação', "red");}
-                        }}>Editar</Menu.Item>
-                        <Menu.Item onClick={() => {
-                           if (isLoggedIn) {handleEventDelete(event.extendedProps.eventId)}
-                           else {showNotification("Ação necessária", 'Por favor clique em "Login" e introduza as suas credenciais de acesso para efetuar esta operação', "red");}
-                        }}>Eliminar</Menu.Item>
-                     </Menu.Dropdown>
-                  </Menu>
-               )}
-            </> );
-         }}
+         dayCellDidMount={onDayCellDidMount}
+         dayCellWillUnmount={onDayCellWillUnmount}
+         eventContent={renderEventContent}
          datesSet={handleDatesSet}
-         eventDidMount={({ event, el }) => {
-            el.oncontextmenu = (e) => { e.preventDefault() }
-            el.ondblclick = () =>  { eventDCHandler(event.extendedProps.eventId) }  // Editar ausência com double-click
-            
-            if (event.extendedProps.type === 'off-day') { // Retirar funcionalidade de ausências (não-férias)
-               event.setProp('editable', false);
-               event.setProp('durationEditable', false);
-            }
-
-            // Marcar elementos com atributo único para serem targets de Tooltips
-            const segId = event._instance?.instanceId ?? `${event.id}-${event.startStr ?? ''}`;
-            el.setAttribute('data-evk', String(segId));
-         }}
-         eventResize={({ event }) => {
-            if (event.extendedProps.type == 'vacation') {
-               const updatedStart = event.start ? processDate(event.start) : '';
-               const updatedEnd = event.end ? processDate(event.end,-1) : event.start ? processDate(event.start) : '';     
-               handleEventEdit(event.extendedProps.eventId, updatedStart, updatedEnd);
-            } else { return; }
-         }}
-         eventDrop={({ event }) => {
-            let updatedStart;
-            let updatedEnd;
-            const isOffDay = event.extendedProps.type === 'off-day';
-            const hasTimeComponent  = 
-               event.start && 
-               event.extendedProps.originalEnd &&
-               (
-                  event.start.toString().includes('T') || 
-                  event.extendedProps.originalEnd.toString().includes('T')
-               );
-            
-            if (isOffDay && hasTimeComponent ){
-               const endTime = dayjs(event.extendedProps.originalEnd).format('HH:mm');
-               updatedStart = `${dayjs(event.start).format('YYYY-MM-DDTHH:mm')}`;
-               updatedEnd = `${dayjs(event.end).add(-1).format('YYYY-MM-DD')}T${endTime}`;
-            } else {
-               updatedStart = event.start ? processDate(event.start) : ''
-               updatedEnd = event.end ? processDate(event.end, -1) : event.start ? processDate(event.start) : '';
-            }
-            handleEventEdit(event.extendedProps.eventId, updatedStart, updatedEnd);
-         }}
-         eventMouseEnter={(arg) => {
-            // ignore holidays (they use the day-cell tooltip)
-            if (arg.event.display === 'background') return;
-            const segId = arg.event._instance?.instanceId ?? `${arg.event.id}-${arg.event.startStr ?? ''}`;
-            const selector = `[data-evk="${segId}"]`;
-            // Build label 
-            const label = buildWorkerEventTooltip(arg.event, workerById, nameDisplay);
-            setHover({ kind: 'event', key: String(segId), selector, label });
-         }}
-         eventMouseLeave={(arg) => {
-            const segId = arg.event._instance?.instanceId ?? `${arg.event.id}-${arg.event.startStr ?? ''}`;
-            setHover(h => (h?.kind === 'event' && h.key === String(segId) ? null : h));
-         }}
-         dateClick={(info) => { // criar nova ausência em dia vazio
-            info.dayEl.addEventListener('dblclick', () => handleDateDoubleClick(info));
-         }} />
+         eventDidMount={onEventDidMount}
+         eventResize={onEventResize}
+         eventDrop={onEventDrop}
+         eventMouseEnter={onEventMouseEnter}
+         eventMouseLeave={onEventMouseLeave}
+         dateClick={onDateClick} // criar nova ausência em dia vazio
+         />
 
          {/* Modal/Form */}
          <Modal
@@ -578,13 +615,14 @@ const WorkerCalendar: React.FC<WorkerCalendarProps> = ({
             </Group>
          </Modal>
 
-         {/* Event tooltips */}
+         {/* Tooltip System */}
          {hover && (
             <Tooltip
             multiline
-            opened //={!!hover}
-            label={hover?.label}
-            target={hover?.selector}
+            opened={!!hover}
+            label={hover?.label ?? ''}
+            target={hover?.selector ?? ''}
+            withinPortal
             />
          )}
       </>

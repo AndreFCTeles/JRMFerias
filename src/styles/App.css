@@ -20,32 +20,6 @@
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
-/*
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-*/
-
-/*
-@media print {
-  * {
-    overflow: hidden !important;
-  }
-}
-*/
-
 .card {
   padding: 2em;
 }
@@ -133,12 +107,18 @@
   padding: 2px 0px 0px 3px;
 }
 
+/*
 .fc-toolbar-title {
   text-transform: capitalize;
 }
 
 .fc-multimonth-header {
   text-transform: capitalize;
+}
+  */
+
+.fc .fc-header-toolbar .fc-toolbar-title::first-letter {
+  text-transform: uppercase;
 }
 
 .fc .fc-bg-event {
@@ -155,6 +135,7 @@
 .weekend {
   background-color: rgba(240, 240, 240, 0.5);
 }
+
 
 .fc-day {
   line-height: 1em;
